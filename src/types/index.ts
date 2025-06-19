@@ -11,9 +11,12 @@ export interface Product {
   inStock: boolean;
   rating: number;
   reviewCount: number;
-  deliveryTime: '90min' | 'scheduled';
+  deliveryTime: string; // Changed to string to accommodate various inputs
   tags: string[];
   prescriptionRequired?: boolean;
+  pharmacyName?: string; // Added pharmacyName
+  productAmount?: number; // Added productAmount
+  expiryDate?: Date | null; // Added expiryDate, can be Date object or null
 }
 
 export interface CartItem {
@@ -26,6 +29,15 @@ export interface User {
   email: string;
   displayName?: string;
   photoURL?: string;
+  // Add pharmacyInfo for Pharmacy role
+  pharmacyInfo?: {
+    name: string;
+    vodafoneCash: string;
+    address: string;
+    mapLink: string;
+    logoImage: string | null;
+    pharmacyImages: Array<string | null>;
+  };
 }
 
 export interface Comment {

@@ -14,6 +14,15 @@ interface UserData {
   role?: string;
   photoDataUrl?: string; // Add this line
   aboutMe?: string; // Add aboutMe field
+  pharmacyName?: string; // Add pharmacyName field
+  pharmacyInfo?: {
+    name: string;
+    vodafoneCash: string;
+    address: string;
+    mapLink: string;
+    logoImage: string | null;
+    pharmacyImages: Array<string | null>;
+  };
 }
 
 interface AuthContextType {
@@ -85,16 +94,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         navigate('/number');
         return;
       }
+      // Keep the role check, but only if phoneNumber exists
       if (userData.phoneNumber && !userData.role && location.pathname !== '/role') {
         toast.info('Please select a role to continue.');
         navigate('/role');
         return;
       }
-
-    } else if (!user && !publicRoutes.includes(location.pathname)) {
-      // If user is NOT logged in and tries to access a protected page, redirect to login
-      navigate('/login');
     }
+    // Removed the !user redirection logic from here, ProtectedRoute handles it
   }, [user, userData, loading, navigate, location.pathname]);
 
   const uploadProfilePicture = async (file: File, currentUser: FirebaseAuthUser) => {

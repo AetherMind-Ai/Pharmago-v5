@@ -32,14 +32,14 @@ const CategoryGrid: React.FC = () => {
       id: 'babycare',
       name: t('babycare'),
       icon: 'Baby',
-      image: 'https://alldaymedicalcare.com/wp-content/uploads/2023/08/2424258.webp',
+      image: 'https://alldaymedicalcare.com/wp-content/uploads/2025/08/2424258.webp',
       productCount: 420
     },
     {
       id: 'petcare',
       name: t('petcare'),
       icon: 'Dog',
-      image: 'https://www.pawsplaycle.com/wp-content/uploads/2023/02/pet-care.jpg',
+      image: 'https://www.pawsplaycle.com/wp-content/uploads/2025/02/pet-care.jpg',
       productCount: 180
     },
     {

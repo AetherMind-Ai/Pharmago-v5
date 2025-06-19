@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { mockProducts } from '../data/mockData';
 import { Product } from '../types';
 import ProductCard from '../components/ProductCard';
 import FilterSidebar from '../components/FilterSidebar';
 import { Grid, List, ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react';
 import { FilterOptions } from '../types'; // Import FilterOptions
+import { db } from '../firebaseConfig'; // Import db
+import { collection, getDocs, query, where } from 'firebase/firestore'; // Import Firestore functions
 
 const ProductsPage: React.FC = () => {
   const location = useLocation();
@@ -22,7 +23,9 @@ const ProductsPage: React.FC = () => {
     categories: [],
     inStockOnly: false,
     deliveryTime: [],
+    minRating: 0, // Added missing minRating property
   });
+  const [loading, setLoading] = useState(true); // New loading state
 
   const handleFiltersChange = (newFilters: FilterOptions) => {
     setFilters(newFilters);
@@ -30,34 +33,65 @@ const ProductsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    let filtered = mockProducts;
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const productsCollectionRef = collection(db, 'products');
+        let q = query(productsCollectionRef);
 
-    // Apply search query from URL
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(query) ||
-        product.brand.toLowerCase().includes(query) ||
-        product.tags.some(tag => tag.toLowerCase().includes(query))
-      );
-    }
+        // Apply search query
+        if (searchQuery) {
+          const lowerCaseSearchQuery = searchQuery.toLowerCase();
+          // This is a basic client-side filter for search. For more robust search,
+          // consider full-text search solutions like Algolia or Firebase Extensions.
+          // For now, we'll fetch all and filter client-side if a search query exists.
+        }
 
-    // Apply sidebar filters
-    if (filters.brands.length > 0) {
-      filtered = filtered.filter(product => filters.brands.includes(product.brand));
-    }
-    if (filters.categories.length > 0) {
-      filtered = filtered.filter(product => filters.categories.includes(product.category));
-    }
-    if (filters.inStockOnly) {
-      filtered = filtered.filter(product => product.inStock);
-    }
-    if (filters.deliveryTime.length > 0) {
-      filtered = filtered.filter(product => filters.deliveryTime.includes(product.deliveryTime));
-    }
-    filtered = filtered.filter(product => product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1]);
+        const querySnapshot = await getDocs(q);
+        let fetchedProducts: Product[] = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            expiryDate: data.expiryDate ? data.expiryDate.toDate() : null, // Convert Timestamp to Date
+          } as Product;
+        });
 
-    setProducts(filtered);
+        // Apply client-side search filter after fetching
+        if (searchQuery) {
+          const lowerCaseSearchQuery = searchQuery.toLowerCase();
+          fetchedProducts = fetchedProducts.filter(product =>
+            product.name.toLowerCase().includes(lowerCaseSearchQuery) ||
+            product.brand.toLowerCase().includes(lowerCaseSearchQuery) ||
+            product.tags.some(tag => tag.toLowerCase().includes(lowerCaseSearchQuery))
+          );
+        }
+
+        // Apply sidebar filters
+        if (filters.brands.length > 0) {
+          fetchedProducts = fetchedProducts.filter(product => filters.brands.includes(product.brand));
+        }
+        if (filters.categories.length > 0) {
+          fetchedProducts = fetchedProducts.filter(product => filters.categories.includes(product.category));
+        }
+        if (filters.inStockOnly) {
+          fetchedProducts = fetchedProducts.filter(product => product.inStock);
+        }
+        if (filters.deliveryTime.length > 0) {
+          fetchedProducts = fetchedProducts.filter(product => filters.deliveryTime.includes(product.deliveryTime));
+        }
+        fetchedProducts = fetchedProducts.filter(product => product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1]);
+
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        // Handle error (e.g., show a message to the user)
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
     setCurrentPage(1); // Reset to first page on new search or filter change
   }, [searchQuery, filters]); // Depend on searchQuery and filters
 

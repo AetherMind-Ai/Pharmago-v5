@@ -8,9 +8,10 @@ import { useCart } from '../contexts/CartContext';
 interface ProductCardProps {
   product: Product;
   isListView?: boolean; // Optional prop for list view
+  onDelete?: (productId: string) => void; // Optional prop for delete functionality
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, isListView = false }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, isListView = false, onDelete }) => {
   const { t } = useLanguage();
   const { addToCart } = useCart();
   // const navigate = useNavigate(); // Initialize useNavigate
@@ -19,6 +20,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, isListView = false }
     e.preventDefault();
     e.stopPropagation();
     addToCart(product);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigating to product detail page
+    e.stopPropagation(); // Stop event propagation to the card link
+    if (onDelete) {
+      onDelete(product.id);
+    }
   };
 
   const renderRating = () => {
@@ -136,6 +145,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, isListView = false }
               <ShoppingCart size={16} />
               <span>{t('addToCart')}</span>
             </button>
+            {onDelete && (
+              <button
+                onClick={handleDeleteClick}
+                className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-medium transition-all duration-300 bg-red-500 text-white hover:bg-red-600"
+              >
+                <span>{t('deleteProduct' || 'Delete Product')}</span> {/* Added translation key or default */}
+              </button>
+            )}
           </div>
 
           {/* Stock Status */}

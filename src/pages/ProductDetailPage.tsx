@@ -1,12 +1,16 @@
 import React, { useState, useEffect, MouseEvent, FormEvent, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { mockProducts } from '../data/mockData';
-import { Product, Comment } from '../types';
-import { Star, ShoppingCart, Trash2, CreditCard } from 'lucide-react';
+import { useParams, useNavigate, Link } from 'react-router-dom'; // Import Link if needed later, keep for now
+import { Product, Comment } from '../types'; // Keep Product and Comment types
+import {
+  FaStar as Star, // Use FaStar from react-icons/fa for consistency
+  FaShoppingCart as ShoppingCart,
+  FaTrashAlt as Trash2, // Use FaTrashAlt
+  FaCreditCard as CreditCard // Use FaCreditCard
+} from 'react-icons/fa'; // Import icons from react-icons/fa
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import { db } from '../firebaseConfig'; // Import db
-import { collection, query, where, orderBy, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore'; // Firestore imports
+import { collection, query, where, orderBy, addDoc, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore'; // Firestore imports, add getDoc
 import { toast } from 'react-toastify'; // Import toast
 import ConfirmationDialog from '../components/ConfirmationDialog'; // Import ConfirmationDialog
 
@@ -28,7 +32,7 @@ const ProductDetailPage: React.FC = () => {
   const [newUsername, setNewUsername] = useState(userData?.username || ''); // Default to user's username
   const [newRating, setNewRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
-  
+
   // MODIFIED: Refs for the new zoom logic
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null); // Ref for the container div
@@ -60,11 +64,34 @@ const ProductDetailPage: React.FC = () => {
   }, [productId]);
 
   useEffect(() => {
-    const foundProduct = mockProducts.find((p: Product) => p.id === productId);
-    setProduct(foundProduct);
+    const fetchProduct = async () => {
+      if (!productId) return;
+      try {
+        const productDocRef = doc(db, 'products', productId);
+        const productDocSnap = await getDoc(productDocRef);
+
+        if (productDocSnap.exists()) {
+          const productData = productDocSnap.data();
+          setProduct({
+            id: productDocSnap.id,
+            ...productData,
+            expiryDate: productData.expiryDate ? productData.expiryDate.toDate() : null, // Convert Timestamp to Date
+          } as Product);
+        } else {
+          // Product not found
+          setProduct(undefined); // Or set a state to indicate not found
+          toast.error('Product not found.');
+        }
+      } catch (error) {
+        console.error('Error fetching product:', error);
+        toast.error('Failed to load product details.');
+      }
+    };
+
+    fetchProduct();
     fetchComments(); // Fetch comments on component mount or productId change
-  }, [productId, fetchComments]);
-  
+  }, [productId, fetchComments]); // Add fetchComments as a dependency
+
   // --- NEW AND IMPROVED ZOOM LOGIC ---
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!imageRef.current || !containerRef.current) return;
@@ -78,15 +105,16 @@ const ProductDetailPage: React.FC = () => {
 
     // Calculate mouse position as a percentage of the container's dimensions
     const xPercent = x / containerRect.width;
-    const yPercent = y / containerRect.height;
-    
+    const yPercent = y / containerRef.current.clientHeight; // Use container height
+
     const scale = 3; // Set zoom factor
 
     // Apply the transformation directly for performance
     // This pans the image to keep the cursor's target in view
     image.style.transition = 'transform 0.1s ease-out'; // Fast transition for smooth panning
-    image.style.transform = `translate(-${xPercent * (image.width * scale - containerRect.width)}px, -${yPercent * (image.height * scale - containerRect.height)}px) scale(${scale})`;
+    image.style.transform = `translate(-${xPercent * (image.width * scale - containerRef.current.clientWidth)}px, -${yPercent * (image.height * scale - containerRef.current.clientHeight)}px) scale(${scale})`;
   };
+
 
   const handleMouseEnter = () => {
     if (!imageRef.current) return;
@@ -267,6 +295,22 @@ const ProductDetailPage: React.FC = () => {
                   ))}
                 </div>
               )}
+               {/* Display Pharmacy Name */}
+               {product.pharmacyName && (
+                 <p><span className="font-semibold">Sold By:</span> {product.pharmacyName}</p>
+               )}
+                {/* Display Product Amount */}
+               {product.productAmount !== undefined && (
+                 <p><span className="font-semibold">Amount:</span> {product.productAmount}</p>
+               )}
+                {/* Display Delivery Time */}
+               {product.deliveryTime && (
+                 <p><span className="font-semibold">Delivery Time:</span> {product.deliveryTime}</p>
+               )}
+                {/* Display Expiry Date */}
+               {product.expiryDate && (
+                 <p><span className="font-semibold">Expiry Date:</span> {product.expiryDate instanceof Date ? product.expiryDate.toLocaleDateString() : product.expiryDate}</p>
+               )}
             </div>
           </div>
 

@@ -102,12 +102,6 @@ const NumberInputPage: React.FC = () => {
           Continue
         </button>
 
-        <button
-          onClick={() => navigate('/login')}
-          className="mt-6 text-base text-blue-600 underline hover:text-blue-800 transition-colors duration-200 font-medium"
-        >
-          Change Account
-        </button>
       </div>
     </div>
   );

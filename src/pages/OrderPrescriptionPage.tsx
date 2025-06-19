@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebaseConfig';
 import { doc, setDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 // A helper component for styled section cards to keep the main component clean
 const SectionCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
@@ -18,6 +19,7 @@ const SectionCard: React.FC<{ children: React.ReactNode; className?: string }> =
 
 const OrderPrescriptionPage: React.FC = () => {
   const { user, userData } = useAuth();
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [productName, setProductName] = useState('');
@@ -143,6 +145,17 @@ const OrderPrescriptionPage: React.FC = () => {
 
       toast.success('Order submitted successfully!');
       
+      // Navigate to /payup page with order details
+      navigate('/payup', {
+        state: {
+          products: matchingProducts,
+          totalPrice: totalPrice,
+          deliveryFee: deliveryFee,
+          tax: tax,
+          orderData: orderData // Pass the full order data for display on Payup page
+        }
+      });
+
       // Reset form state after successful submission
       clearFileSelection();
       setProductName('');

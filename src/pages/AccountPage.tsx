@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
-  FaCamera, FaSpinner, FaGlobe, FaGithub, FaTwitter, FaInstagram, FaFacebook
+  FaCamera, FaSpinner,
+  FaUser, FaEnvelope, FaAt, FaPhone, FaMapMarkerAlt, FaMailBulk, FaGlobeAmericas, FaCity,
+  FaShoppingCart, FaTachometerAlt, FaSignOutAlt, FaSave, FaEdit
 } from 'react-icons/fa';
 
 // --- Helper Components for a Cleaner Structure ---
@@ -106,6 +108,15 @@ export const AccountPage: React.FC = () => {
     }
   };
 
+  const handleDashboardClick = () => {
+    if (userData?.role === 'pharmacy') {
+      navigate('/dashboard/pharmacy'); // Navigate to pharmacy dashboard for pharmacy role
+    } else if (userData?.role === 'delivery') {
+      navigate('/dashboard/delivery'); // Keep existing logic for delivery role
+    }
+    // No action needed for 'client' role as the button will not be displayed
+  };
+
   // --- Loading and Fallback States ---
   if (loading) {
     return (
@@ -129,9 +140,9 @@ export const AccountPage: React.FC = () => {
         <nav className="mb-6 text-sm text-gray-500">
           <span>Home</span>
           <span className="mx-2">/</span>
-          <span>User</span>
+          <span>Account</span>
           <span className="mx-2">/</span>
-          <span className="font-semibold text-gray-700">User Profile</span>
+          <span className="font-semibold text-gray-700">User Account</span>
         </nav>
 
         {/* Main Grid Layout */}
@@ -173,7 +184,9 @@ export const AccountPage: React.FC = () => {
               <h3 className="text-2xl font-semibold mt-4">{userData.fullName || 'User Name'}</h3>
               <p className="text-gray-500">{userData.role || 'User Role'}</p>
               <div className="mt-6 flex justify-center gap-3">
-                <button onClick={() => navigate('/products')} className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">Start Buying</button>
+                <button onClick={() => navigate('/products')} className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center justify-center">
+                  <FaShoppingCart className="mr-2" /> Start Buying
+                </button>
               </div>
             </div>
 
@@ -182,19 +195,19 @@ export const AccountPage: React.FC = () => {
               <h4 className="text-lg font-semibold mb-4 text-gray-800">Contact Information</h4>
               <div className="divide-y divide-gray-200">
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-gray-600 font-medium">Address</span>
+                  <span className="text-gray-600 font-medium flex items-center"><FaMapMarkerAlt className="mr-2 text-blue-500" />Address</span>
                   <span className="text-gray-800">Governorate Beheira, Abo Homos</span>
                 </div>
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-gray-600 font-medium">Zip Code</span>
+                  <span className="text-gray-600 font-medium flex items-center"><FaMailBulk className="mr-2 text-blue-500" />Zip Code</span>
                   <span className="text-gray-800">5935360</span>
                 </div>
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-gray-600 font-medium">Country</span>
+                  <span className="text-gray-600 font-medium flex items-center"><FaGlobeAmericas className="mr-2 text-blue-500" />Country</span>
                   <span className="text-gray-800">Egypt</span>
                 </div>
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-gray-600 font-medium">City</span>
+                  <span className="text-gray-600 font-medium flex items-center"><FaCity className="mr-2 text-blue-500" />City</span>
                   <span className="text-gray-800">Abo Homos</span>
                 </div>
               </div>
@@ -208,24 +221,37 @@ export const AccountPage: React.FC = () => {
             <div className="bg-white p-6 rounded-lg shadow-md">
                 <div className="divide-y divide-gray-200">
                     <div className="flex justify-between items-center py-3">
-                        <span className="text-gray-600 font-medium">Full Name</span>
+                        <span className="text-gray-600 font-medium flex items-center"><FaUser className="mr-2 text-blue-500" />Full Name</span>
                         <span className="text-gray-800">{userData.fullName || 'Not provided'}</span>
                     </div>
                     <div className="flex justify-between items-center py-3">
-                        <span className="text-gray-600 font-medium">Email</span>
+                        <span className="text-gray-600 font-medium flex items-center"><FaEnvelope className="mr-2 text-blue-500" />Email</span>
                         <span className="text-gray-800">{userData.email}</span>
                     </div>
                     <div className="flex justify-between items-center py-3">
-                        <span className="text-gray-600 font-medium">Username</span>
+                        <span className="text-gray-600 font-medium flex items-center"><FaAt className="mr-2 text-blue-500" />Username</span>
                         <span className="text-gray-800">{userData.username}</span>
                     </div>
                     <div className="flex justify-between items-center py-3">
-                        <span className="text-gray-600 font-medium">Phone</span>
+                        <span className="text-gray-600 font-medium flex items-center"><FaPhone className="mr-2 text-blue-500" />Phone</span>
                         <span className="text-gray-800">{userData.phoneNumber || 'Not provided'}</span>
                     </div>
+                    {userData.role === 'pharmacy' && userData.pharmacyInfo?.name && (
+                        <div className="flex justify-between items-center py-3">
+                            <span className="text-gray-600 font-medium flex items-center"><FaMailBulk className="mr-2 text-blue-500" />Pharmacy Name</span> {/* Using FaMailBulk icon as a placeholder */}
+                            <span className="text-gray-800">{userData.pharmacyInfo.name}</span>
+                        </div>
+                    )}
                 </div>
                 <div className="mt-6 flex justify-end gap-3">
-                    <button onClick={handleSignOut} className="px-5 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition">Sign Out</button>
+                    {userData?.role === 'pharmacy' && ( // Only show button for pharmacy role
+                        <button onClick={handleDashboardClick} className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition flex items-center justify-center">
+                            <FaTachometerAlt className="mr-2" /> Dashboard
+                        </button>
+                    )}
+                    <button onClick={handleSignOut} className="px-5 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition flex items-center justify-center">
+                        <FaSignOutAlt className="mr-2" /> Sign Out
+                    </button>
                 </div>
             </div>
 
@@ -248,16 +274,16 @@ export const AccountPage: React.FC = () => {
                 {isEditingAboutMe ? (
                   <button
                     onClick={handleSaveAboutMe}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center justify-center"
                   >
-                    Save
+                    <FaSave className="mr-2" /> Save
                   </button>
                 ) : (
                   <button
                     onClick={() => setIsEditingAboutMe(true)}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition flex items-center justify-center"
                   >
-                    Edit
+                    <FaEdit className="mr-2" /> Edit
                   </button>
                 )}
               </div>

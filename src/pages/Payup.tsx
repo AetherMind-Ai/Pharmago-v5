@@ -18,8 +18,8 @@ import {
 
 const Payup: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // Get location object
-  const productToBuy: Product | undefined = location.state?.productToBuy; // Get product from state
+  const location = useLocation(); // Import useLocation
+  const { productToBuy, products: obpProducts, totalPrice: obpTotalPrice, deliveryFee: obpDeliveryFee, tax: obpTax, orderData: obpOrderData } = location.state || {};
 
   // Destructure clearCart from useCart
   const { items, getTotalPrice, clearCart } = useCart();
@@ -28,7 +28,7 @@ const Payup: React.FC = () => {
 
   const [name, setName] = useState(userData?.fullName || '');
   const [phone, setPhone] = useState(userData?.phoneNumber || '');
-  const [address, setAddress] = useState(''); // Do not pre-fill address
+  const [address, setAddress] = useState(obpOrderData?.userAddress || ''); // Pre-fill address if coming from OBP
   const [vodafoneCashNumber, setVodafoneCashNumber] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [isCopied, setIsCopied] = useState(false);
@@ -63,13 +63,15 @@ const Payup: React.FC = () => {
       senderVodafoneCash: vodafoneCashNumber,
       transactionId,
       total: calculateTotalWithExtras(), // Use the total with shipping and tax
-      items: productToBuy ? [productToBuy] : items, // Log either the single product or cart items
+      items: productToBuy ? [productToBuy] : (obpProducts || items), // Log either the single product, OBP products, or cart items
+      orderType: obpOrderData ? 'Prescription Order' : (productToBuy ? 'Direct Buy' : 'Cart Order'),
+      obpOrderDetails: obpOrderData, // Include OBP specific data if available
     });
 
     alert('Order successfully placed! You will be redirected.');
 
-    // Clear the cart only if the order was placed from the cart, not direct buy
-    if (!productToBuy) {
+    // Clear the cart only if the order was placed from the cart, not direct buy or OBP
+    if (!productToBuy && !obpOrderData) {
       clearCart(); 
     }
 
@@ -78,15 +80,19 @@ const Payup: React.FC = () => {
 
   // **FIXED**: Simplified the form invalidation check. The required attribute on inputs handles individual fields.
   // The primary check is to ensure the cart is not empty.
-  const SHIPPING_COST = 10.00; // Fixed shipping cost
-  const TAX_AMOUNT = 5.00;    // Fixed tax amount
+  const SHIPPING_COST = obpDeliveryFee !== undefined ? obpDeliveryFee : 10.00; // Use OBP delivery fee or default
+  const TAX_AMOUNT = obpTax !== undefined ? obpTax : 5.00;    // Use OBP tax or default
 
   const calculateTotalWithExtras = () => {
+    if (obpTotalPrice !== undefined) {
+      return obpTotalPrice; // Use total from OBP if available
+    }
     const subtotal = productToBuy ? productToBuy.price : getTotalPrice();
     return subtotal + SHIPPING_COST + TAX_AMOUNT;
   };
 
-  const isFormInvalid = productToBuy ? false : items.length === 0; // Form is invalid if no product and cart is empty
+  // Form is invalid if no product, no OBP products, and cart is empty
+  const isFormInvalid = productToBuy ? false : (obpProducts ? false : items.length === 0);
 
   return (
     <div className="bg-slate-50 min-h-screen pt-24 pb-12 px-4 sm:px-6 lg:px-8">
@@ -124,6 +130,45 @@ const Payup: React.FC = () => {
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
                     <span>{productToBuy.price.toFixed(2)} EGP</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Shipping</span>
+                    <span>{SHIPPING_COST.toFixed(2)} EGP</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Tax</span>
+                    <span>{TAX_AMOUNT.toFixed(2)} EGP</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-4 text-xl font-bold text-gray-900">
+                    <span>Total</span>
+                    <span>{calculateTotalWithExtras().toFixed(2)} EGP</span>
+                  </div>
+                </div>
+              </>
+            ) : obpProducts && obpProducts.length > 0 ? (
+              <>
+                <div className="flex-grow space-y-4 overflow-y-auto max-h-[20rem] pr-2 -mr-2">
+                  {obpProducts.map((product: Product) => (
+                    <div key={product.id} className="flex items-center space-x-4">
+                      <img
+                        src={product.image || '/placeholder-product.jpg'}
+                        alt={product.name}
+                        className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                      />
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">{product.name}</p>
+                        <p className="text-sm text-gray-500">Qty: 1</p> {/* Assuming 1 quantity for OBP products */}
+                      </div>
+                      <p className="font-semibold text-gray-900">
+                        {product.price.toFixed(2)} EGP
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Subtotal</span>
+                    <span>{(obpTotalPrice - obpDeliveryFee - obpTax).toFixed(2)} EGP</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>

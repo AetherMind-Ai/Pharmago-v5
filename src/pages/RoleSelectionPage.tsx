@@ -18,19 +18,7 @@ const RoleSelectionPage: React.FC = () => {
 
   useEffect(() => {
     if (userData && userData.role) {
-      switch (userData.role) {
-        case 'Delivery':
-          navigate('/dashboard/delivery');
-          break;
-        case 'Pharmacy':
-          navigate('/dashboard/pharmacy');
-          break;
-        case 'Client':
-          navigate('/home'); // Changed to /home
-          break;
-        default:
-          navigate('/home'); // Changed to /home
-      }
+      navigate('/account');
     }
   }, [userData, navigate]);
 
@@ -48,18 +36,10 @@ const RoleSelectionPage: React.FC = () => {
       console.log('updateUserRole successful');
       toast.success('Role selected successfully!', { position: 'bottom-left' }); // Add success toast
 
-      switch (selectedRole) {
-        case 'Delivery':
-          navigate('/dashboard/delivery');
-          break;
-        case 'Pharmacy':
-          navigate('/dashboard/pharmacy');
-          break;
-        case 'Client':
-          navigate('/home'); // Changed to /home
-          break;
-        default:
-          navigate('/home'); // Changed to /home
+      if (selectedRole === 'Pharmacy') {
+        navigate('/verify/pharmacy');
+      } else {
+        navigate('/account');
       }
     } catch (err: any) {
       console.error('Error selecting role:', err.message);
