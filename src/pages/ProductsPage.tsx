@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom'; // Import useSearchParams
 import { Product } from '../types';
 import ProductCard from '../components/ProductCard';
 import FilterSidebar from '../components/FilterSidebar';
@@ -10,20 +10,32 @@ import { collection, getDocs, query, where } from 'firebase/firestore'; // Impor
 
 const ProductsPage: React.FC = () => {
   const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const searchQuery = queryParams.get('query');
+  const [searchParams] = useSearchParams(); // Use useSearchParams
+  const searchQuery = searchParams.get('query'); // Get query from searchParams
+  const categoryQuery = searchParams.get('category'); // Get category from searchParams
 
   const [products, setProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [productsPerPage] = useState(24); // 24 products per page
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'grid-2-col'>('grid'); // 'grid', 'list', or 'grid-2-col'
-  const [filters, setFilters] = useState<FilterOptions>({
-    priceRange: [0, 1000],
-    brands: [],
-    categories: [],
-    inStockOnly: false,
-    deliveryTime: [],
-    minRating: 0, // Added missing minRating property
+  const [filters, setFilters] = useState<FilterOptions>(() => {
+    // Initialize filters based on URL params
+    const initialFilters: FilterOptions = {
+      priceRange: [0, 1000],
+      brands: [],
+      categories: [],
+      inStockOnly: false,
+      deliveryTime: [],
+      minRating: 0,
+      pharmacyNames: [],
+    };
+
+    if (categoryQuery) {
+      initialFilters.categories = [categoryQuery];
+    }
+    // Add other initial filters from URL params if needed
+
+    return initialFilters;
   });
   const [loading, setLoading] = useState(true); // New loading state
 
@@ -48,14 +60,42 @@ const ProductsPage: React.FC = () => {
         }
 
         const querySnapshot = await getDocs(q);
-        let fetchedProducts: Product[] = querySnapshot.docs.map(doc => {
+        let fetchedProducts: Product[] = [];
+
+        // Fetch reviews for each product
+        for (const doc of querySnapshot.docs) {
           const data = doc.data();
-          return {
+          const product: Product = {
             id: doc.id,
             ...data,
             expiryDate: data.expiryDate ? data.expiryDate.toDate() : null, // Convert Timestamp to Date
+            rating: 0, // Default to 0
+            reviewCount: 0, // Default to 0
           } as Product;
-        });
+
+          // Fetch comments/reviews for the current product
+          const commentsCollectionRef = collection(db, 'comments');
+          const commentsQuery = query(commentsCollectionRef, where('productId', '==', product.id));
+          const commentsSnapshot = await getDocs(commentsQuery);
+
+          let totalRating = 0;
+          let reviewCount = 0;
+
+          commentsSnapshot.docs.forEach(commentDoc => {
+            const commentData = commentDoc.data();
+            if (typeof commentData.rating === 'number') {
+              totalRating += commentData.rating;
+              reviewCount++;
+            }
+          });
+
+          if (reviewCount > 0) {
+            product.rating = totalRating / reviewCount;
+            product.reviewCount = reviewCount;
+          }
+
+          fetchedProducts.push(product);
+        }
 
         // Apply client-side search filter after fetching
         if (searchQuery) {
@@ -80,6 +120,9 @@ const ProductsPage: React.FC = () => {
         if (filters.deliveryTime.length > 0) {
           fetchedProducts = fetchedProducts.filter(product => filters.deliveryTime.includes(product.deliveryTime));
         }
+        if (filters.pharmacyNames.length > 0) {
+          fetchedProducts = fetchedProducts.filter(product => product.pharmacyName && filters.pharmacyNames.includes(product.pharmacyName));
+        }
         fetchedProducts = fetchedProducts.filter(product => product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1]);
 
         setProducts(fetchedProducts);
@@ -93,7 +136,7 @@ const ProductsPage: React.FC = () => {
 
     fetchProducts();
     setCurrentPage(1); // Reset to first page on new search or filter change
-  }, [searchQuery, filters]); // Depend on searchQuery and filters
+  }, [searchQuery, filters, categoryQuery]); // Depend on searchQuery, filters, and categoryQuery
 
   // Pagination logic
   const indexOfLastProduct = currentPage * productsPerPage;

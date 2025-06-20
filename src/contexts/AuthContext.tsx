@@ -99,6 +99,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         toast.info('Please select a role to continue.');
         navigate('/role');
         return;
+      } else if (userData.phoneNumber && userData.role && location.pathname === '/login') {
+        // If user has phone number and role, and is on login page, redirect to account
+        navigate('/account');
+        return;
       }
     }
     // Removed the !user redirection logic from here, ProtectedRoute handles it

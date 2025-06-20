@@ -36,27 +36,38 @@ const SocialLink: React.FC<{ icon: React.ReactNode; label: string; value: string
   </li>
 );
 
+// Helper function to get role-based description
+const getRoleDescription = (role: string | undefined, fullName: string | undefined) => {
+  const userName = fullName || 'User';
+  switch (role) {
+    case 'client':
+      return `I am ${userName}, and I use PharmaGo to easily browse and purchase health and wellness products.
+It’s a simple and reliable way for me to get everything I need delivered to my door.`;
+    case 'pharmacy':
+      return `I am ${userName}, and I use PharmaGo to manage, list, and sell pharmaceutical products online.
+PharmaGo helps me reach more customers and grow my pharmacy business with ease.`;
+    case 'delivery':
+      return `I am ${userName}, and I use PharmaGo to pick up and deliver medical products quickly and efficiently.
+With PharmaGo, I stay organized and ensure timely deliveries to clients and pharmacies.`;
+    default:
+      return `Hello, I am ${userName}. I am using PharmaGo to stay connected in the healthcare ecosystem.
+It helps me manage everything from orders to communication in one platform.`;
+  }
+};
+
 // --- Main Account Page Component ---
 
 export const AccountPage: React.FC = () => {
   // --- Hooks and State ---
-  const { user, userData, loading, signOutUser, uploadProfilePicture, updateUserProfile } = useAuth(); // Added updateUserProfile
+  const { user, userData, loading, signOutUser, uploadProfilePicture, updateUserProfile } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // State for About Me section
-  const defaultAboutMe = `Hello, I am ${userData?.fullName || 'User'}. I am using PharmaGo To Buy Medical Products Online.`;
-  const [aboutMeText, setAboutMeText] = useState(userData?.aboutMe || defaultAboutMe);
+  // State for About Me section (used for the textarea during editing)
+  const [aboutMeText, setAboutMeText] = useState('');
   const [isEditingAboutMe, setIsEditingAboutMe] = useState(false);
-
-  // Update aboutMeText if userData.aboutMe changes (e.g., after initial load or update)
-  useEffect(() => {
-    if (userData) {
-      setAboutMeText(userData.aboutMe || defaultAboutMe);
-    }
-  }, [userData, defaultAboutMe]);
 
   // --- Effects and Handlers ---
   useEffect(() => {
@@ -108,6 +119,12 @@ export const AccountPage: React.FC = () => {
     }
   };
 
+  const handleEditAboutMe = () => {
+    // When starting to edit, initialize the textarea with the currently displayed text
+    setAboutMeText(displayAboutMe); // Use the computed displayAboutMe
+    setIsEditingAboutMe(true);
+  };
+
   const handleDashboardClick = () => {
     if (userData?.role === 'pharmacy') {
       navigate('/dashboard/pharmacy'); // Navigate to pharmacy dashboard for pharmacy role
@@ -127,10 +144,14 @@ export const AccountPage: React.FC = () => {
   }
 
   if (!user || !userData) {
-    return null; // The useEffect will handle the redirect
+    return null;
   }
 
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.fullName || userData.email)}&background=0D8ABC&color=fff&size=128`;
+
+  // Determine the text to display in the "About Me" section
+  const roleBasedDescription = getRoleDescription(userData.role, userData.fullName);
+  const displayAboutMe = (userData.aboutMe && userData.aboutMe !== '') ? userData.aboutMe : roleBasedDescription;
 
   // --- Render ---
   return (
@@ -160,7 +181,7 @@ export const AccountPage: React.FC = () => {
               >
                 <img
                   className="w-full h-full rounded-full object-cover border-4 border-white shadow-lg"
-                  src={userData.photoDataUrl || user.photoURL || fallbackAvatar} // Use photoDataUrl first
+                  src={userData.photoDataUrl || user.photoURL || fallbackAvatar}
                   alt="Profile"
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-full flex items-center justify-center transition-opacity duration-300">
@@ -182,7 +203,7 @@ export const AccountPage: React.FC = () => {
               {uploadError && <p className="text-red-500 text-sm mt-2">{uploadError}</p>}
               
               <h3 className="text-2xl font-semibold mt-4">{userData.fullName || 'User Name'}</h3>
-              <p className="text-gray-500">{userData.role || 'User Role'}</p>
+              <p className="text-gray-500">{userData.role || 'User Role'}</p> {/* This line displays the role */}
               <div className="mt-6 flex justify-center gap-3">
                 <button onClick={() => navigate('/products')} className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center justify-center">
                   <FaShoppingCart className="mr-2" /> Start Buying
@@ -238,13 +259,13 @@ export const AccountPage: React.FC = () => {
                     </div>
                     {userData.role === 'pharmacy' && userData.pharmacyInfo?.name && (
                         <div className="flex justify-between items-center py-3">
-                            <span className="text-gray-600 font-medium flex items-center"><FaMailBulk className="mr-2 text-blue-500" />Pharmacy Name</span> {/* Using FaMailBulk icon as a placeholder */}
+                            <span className="text-gray-600 font-medium flex items-center"><FaMailBulk className="mr-2 text-blue-500" />Pharmacy Name</span>
                             <span className="text-gray-800">{userData.pharmacyInfo.name}</span>
                         </div>
                     )}
                 </div>
                 <div className="mt-6 flex justify-end gap-3">
-                    {userData?.role === 'pharmacy' && ( // Only show button for pharmacy role
+                    {userData?.role === 'pharmacy' && (
                         <button onClick={handleDashboardClick} className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition flex items-center justify-center">
                             <FaTachometerAlt className="mr-2" /> Dashboard
                         </button>
@@ -262,12 +283,12 @@ export const AccountPage: React.FC = () => {
                 <textarea
                   className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={4}
-                  value={aboutMeText}
+                  value={aboutMeText} // This uses the state for editing
                   onChange={(e) => setAboutMeText(e.target.value)}
                 ></textarea>
               ) : (
                 <p className="text-gray-700 mb-4 whitespace-pre-wrap">
-                  {aboutMeText}
+                  {displayAboutMe} {/* This uses the computed value */}
                 </p>
               )}
               <div className="flex justify-end gap-3">
@@ -280,7 +301,7 @@ export const AccountPage: React.FC = () => {
                   </button>
                 ) : (
                   <button
-                    onClick={() => setIsEditingAboutMe(true)}
+                    onClick={handleEditAboutMe} // Changed to new handler
                     className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition flex items-center justify-center"
                   >
                     <FaEdit className="mr-2" /> Edit

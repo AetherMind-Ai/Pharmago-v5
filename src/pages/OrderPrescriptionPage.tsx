@@ -145,8 +145,8 @@ const OrderPrescriptionPage: React.FC = () => {
 
       toast.success('Order submitted successfully!');
       
-      // Navigate to /payup page with order details
-      navigate('/payup', {
+      // Navigate to /checkout page with order details
+      navigate('/checkout', {
         state: {
           products: matchingProducts,
           totalPrice: totalPrice,

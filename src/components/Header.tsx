@@ -7,7 +7,9 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
-import { mockProducts } from '../data/mockData';
+import { db } from '../firebaseConfig'; // Import db
+import { collection, getDocs } from 'firebase/firestore'; // Import Firestore functions
+import { Product } from '../types'; // Import Product type
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -23,20 +25,45 @@ const Header: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const allNames = mockProducts.map(product => product.name);
-    const allBrands = mockProducts.map(product => product.brand);
-    const allTags = mockProducts.flatMap(product => product.tags);
-    const allCategories = mockProducts.map(product => product.category); // Add categories
-    const uniqueSearchableItems = Array.from(new Set([...allNames, ...allBrands, ...allTags, ...allCategories])); // Include categories
-    setSearchableItems(uniqueSearchableItems);
+    const fetchSearchableData = async () => {
+      try {
+        const productsCollectionRef = collection(db, 'products');
+        const querySnapshot = await getDocs(productsCollectionRef);
+        const products: Product[] = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Product[];
+
+        const allNames = products.map(product => product.name);
+        const allBrands = products.map(product => product.brand);
+        const allTags = products.flatMap(product => product.tags || []); // Ensure tags is an array
+        const allCategories = products.map(product => product.category);
+        const allPharmacyNames = products.map(product => product.pharmacyName).filter(Boolean) as string[];
+
+        const uniqueSearchableItems = Array.from(new Set([
+          ...allNames,
+          ...allBrands,
+          ...allTags,
+          ...allCategories,
+          ...allPharmacyNames
+        ]));
+        setSearchableItems(uniqueSearchableItems);
+      } catch (error) {
+        console.error('Error fetching searchable data:', error);
+        // Fallback to mock data or handle error gracefully if Firestore data fails
+        // For now, we'll just log the error.
+      }
+    };
+
+    fetchSearchableData();
   }, []);
 
   // Updated navigation items to use Lucide icons
   const navigationItems = [
-    { key: 'medications', href: '/medications', icon: <Pill size={20} />, label: 'Medications' },
-    { key: 'skincare', href: '/skincare', icon: <Sparkles size={20} />, label: 'Skincare' },
-    { key: 'vitamins', href: '/vitamins', icon: <Dna size={20} />, label: 'Vitamins' },
-    { key: 'babycare', href: '/babycare', icon: <Baby size={20} />, label: 'Baby Care' },
+    { key: 'medications', icon: <Pill size={20} />, label: 'Medications', category: 'Medications' },
+    { key: 'skincare', icon: <Sparkles size={20} />, label: 'Skincare', category: 'Skincare' },
+    { key: 'vitamins', icon: <Dna size={20} />, label: 'Vitamins', category: 'Vitamins' },
+    { key: 'babycare', icon: <Baby size={20} />, label: 'Baby Care', category: 'Baby Care' },
   ];
 
   const toggleLanguage = () => {
@@ -119,7 +146,7 @@ const Header: React.FC = () => {
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        navigate(`/products?query=${searchQuery}`);
+                        typeAndSearch(searchQuery); // Use typeAndSearch
                         setShowSuggestions(false);
                       }
                     }}
@@ -130,7 +157,7 @@ const Header: React.FC = () => {
                     <button
                       className="btn-primary px-4 py-2 text-sm"
                       onClick={() => {
-                        navigate(`/products?query=${searchQuery}`);
+                        typeAndSearch(searchQuery); // Use typeAndSearch
                         setShowSuggestions(false);
                       }}
                     >
@@ -145,8 +172,7 @@ const Header: React.FC = () => {
                         key={index}
                         className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                         onMouseDown={() => {
-                          setSearchQuery(suggestion);
-                          navigate(`/products?query=${suggestion}`);
+                          typeAndSearch(suggestion); // Use typeAndSearch
                           setShowSuggestions(false);
                         }}
                       >
@@ -213,7 +239,8 @@ const Header: React.FC = () => {
                     key={item.key}
                     onClick={(e) => {
                       e.preventDefault(); // Prevent default navigation
-                      typeAndSearch(item.label);
+                      navigate(`/products?category=${item.category}`); // Navigate with category filter
+                      setIsMenuOpen(false); // Close mobile menu after navigation
                     }}
                     className="text-dark-blue font-semibold hover:text-medium-blue transition-colors duration-300 flex items-center space-x-2 group cursor-pointer"
                   >
@@ -293,7 +320,7 @@ const Header: React.FC = () => {
               <button
                 onClick={() => {
                   setIsCartOpen(false);
-                  navigate('/payup');
+                  navigate('/checkout');
                 }}
                 className="btn-primary w-full py-3 hover:scale-[1.02] transition-transform"
               >

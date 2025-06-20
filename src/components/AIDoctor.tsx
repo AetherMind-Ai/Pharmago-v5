@@ -49,7 +49,7 @@ const AIDoctor: React.FC = () => {
 
     try {
       const encoded = encodeURIComponent(inputMessage);
-      const apiUrl = `https://PharmaGo-mindbot.vercel.app/api/prompt/${encoded}`;
+      const apiUrl = `https://pharmago-mindbot.vercel.app/api/prompt/${encoded}`;
 
       console.log("Calling API:", apiUrl);
       const res = await fetch(apiUrl, { method: 'GET' });

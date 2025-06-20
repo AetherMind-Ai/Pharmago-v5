@@ -23,6 +23,7 @@ import VerifyPharmacyPage from './pages/VerifyPharmacyPage'; // Import VerifyPha
 import PharmacyInfoPage from './pages/PharmacyInfoPage'; // Import PharmacyInfoPage
 import AddProductPage from './pages/AddProductPage'; // Import AddProductPage
 import PharmacyProductsPage from './pages/PharmacyProductsPage.tsx'; // Import PharmacyProductsPage
+import { PharmacyProfilePage } from './pages/PharmacyProfilePage'; // Import PharmacyProfilePage
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Navigate } from 'react-router-dom'; // Import Navigate
@@ -81,7 +82,7 @@ const AppContent: React.FC = () => {
                   <Route path="/dashboard/pharmacy" element={<ProtectedRoute element={<PharmacyDashboard />} requiredRole="pharmacy" />} />
                   <Route path="/products" element={<ProductsPage />} /> {/* New route for products */}
                   <Route path="/product/:productId" element={<ProductDetailPage />} /> {/* Route for product detail page */}
-                  <Route path="/payup" element={<Payup />} /> {/* New route for Payup page */}
+                  <Route path="/checkout" element={<Payup />} /> {/* New route for Payup page */}
                   <Route path="/obp" element={<OrderPrescriptionPage />} /> {/* New route for Order by Prescription page */}
                   <Route path="/verify/pharmacy" element={<VerifyPharmacyPage />} /> {/* New route for Pharmacy Verification page */}
                   <Route path="/info/pharmacy" element={<PharmacyInfoPage />} /> {/* New route for Pharmacy Info page */}
@@ -94,6 +95,7 @@ const AppContent: React.FC = () => {
                     path="/dashboard/pharmacy/products" 
                     element={<ProtectedRoute element={<PharmacyProductsPage />} requiredRole="pharmacy" />} 
                   />
+                  <Route path="/profile/pharmacy/:id" element={<PharmacyProfilePage />} /> {/* New route for Pharmacy Profile Page */}
                 </Routes>
               </main>
               <Footer />

@@ -6,91 +6,91 @@ const Footer: React.FC = () => {
   const { t } = useLanguage();
 
   return (
-    <footer className="bg-gray-800 text-white">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+    <footer className="bg-gray-900 text-gray-300">
+      <div className="container mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Company Info */}
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="bg-gradient-to-r from-dark-blue to-medium-blue p-2 rounded-lg">
-                <Heart size={24} />
+          <div className="flex flex-col items-start">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-3 rounded-xl shadow-lg">
+                <Heart size={28} className="text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold">PharmaGo</h3>
-                <p className="text-xs text-gray-400">Healthcare Delivered</p>
+                <h3 className="text-3xl font-extrabold text-white">MedGo</h3>
+                <p className="text-sm text-gray-400 mt-1">Healthcare Delivered, Simplified.</p>
               </div>
             </div>
-            <p className="text-gray-300 mb-4">
+            <p className="text-gray-400 leading-relaxed mb-6">
               Your trusted online pharmacy delivering authentic medicines and health products
               with professional medical consultation.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-light-blue transition-colors">
-                <Facebook size={20} />
+            <div className="flex space-x-5">
+              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300">
+                <Facebook size={22} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-light-blue transition-colors">
-                <Twitter size={20} />
+              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300">
+                <Twitter size={22} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-light-blue transition-colors">
-                <Instagram size={20} />
+              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300">
+                <Instagram size={22} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-light-blue transition-colors">
-                <Youtube size={20} />
+              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors duration-300">
+                <Youtube size={22} />
               </a>
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-4 text-light-blue">Quick Links</h4>
-            <ul className="space-y-2">
-              <li><a href="/" className="text-gray-300 hover:text-white transition-colors">Home</a></li>
-              <li><a href="/medications" className="text-gray-300 hover:text-white transition-colors">Medications</a></li>
-              <li><a href="/skincare" className="text-gray-300 hover:text-white transition-colors">Skin Care</a></li>
-              <li><a href="/vitamins" className="text-gray-300 hover:text-white transition-colors">Vitamins</a></li>
-              <li><a href="/baby-care" className="text-gray-300 hover:text-white transition-colors">Baby Care</a></li>
-              <li><a href="/pet-care" className="text-gray-300 hover:text-white transition-colors">Pet Care</a></li>
+            <h4 className="text-xl font-bold mb-6 text-white">Quick Links</h4>
+            <ul className="space-y-3">
+              <li><a href="/" className="text-gray-400 hover:text-white transition-colors duration-300">Home</a></li>
+              <li><a href="/medications" className="text-gray-400 hover:text-white transition-colors duration-300">Medications</a></li>
+              <li><a href="/skincare" className="text-gray-400 hover:text-white transition-colors duration-300">Skin Care</a></li>
+              <li><a href="/vitamins" className="text-gray-400 hover:text-white transition-colors duration-300">Vitamins</a></li>
+              <li><a href="/baby-care" className="text-gray-400 hover:text-white transition-colors duration-300">Baby Care</a></li>
+              <li><a href="/pet-care" className="text-gray-400 hover:text-white transition-colors duration-300">Pet Care</a></li>
             </ul>
           </div>
 
           {/* Services */}
           <div>
-            <h4 className="text-lg font-semibold mb-4 text-light-blue">Services</h4>
-            <ul className="space-y-2">
-              <li><a href="#" className="text-gray-300 hover:text-white transition-colors">90-Min Express Delivery</a></li>
-              <li><a href="#" className="text-gray-300 hover:text-white transition-colors">AI Doctor Consultation</a></li>
-              <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Prescription Upload</a></li>
-              <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Medicine Reminders</a></li>
-              <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Health Checkups</a></li>
-              <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Lab Tests</a></li>
+            <h4 className="text-xl font-bold mb-6 text-white">Services</h4>
+            <ul className="space-y-3">
+              <li><a href="#" className="text-gray-400 hover:text-white transition-colors duration-300">90-Min Express Delivery</a></li>
+              <li><a href="#" className="text-gray-400 hover:text-white transition-colors duration-300">AI Doctor Consultation</a></li>
+              <li><a href="#" className="text-gray-400 hover:text-white transition-colors duration-300">Prescription Upload</a></li>
+              <li><a href="#" className="text-gray-400 hover:text-white transition-colors duration-300">Medicine Reminders</a></li>
+              <li><a href="#" className="text-gray-400 hover:text-white transition-colors duration-300">Health Checkups</a></li>
+              <li><a href="#" className="text-gray-400 hover:text-white transition-colors duration-300">Lab Tests</a></li>
             </ul>
           </div>
 
           {/* Contact Info */}
           <div>
-            <h4 className="text-lg font-semibold mb-4 text-light-blue">Contact Us</h4>
-            <div className="space-y-3">
+            <h4 className="text-xl font-bold mb-6 text-white">Contact Us</h4>
+            <div className="space-y-4">
               <div className="flex items-center space-x-3">
-                <Phone size={16} className="text-medium-blue" />
-                <span className="text-gray-300">+1 (555) 123-4567</span>
+                <Phone size={18} className="text-blue-400" />
+                <span className="text-gray-400">+1 (555) 123-4567</span>
               </div>
               <div className="flex items-center space-x-3">
-                <Mail size={16} className="text-medium-blue" />
-                <span className="text-gray-300">support@PharmaGo.com</span>
+                <Mail size={18} className="text-blue-400" />
+                <span className="text-gray-400">support@medgo.com</span>
               </div>
               <div className="flex items-center space-x-3">
-                <MapPin size={16} className="text-medium-blue" />
-                <span className="text-gray-300">123 Healthcare St, Medical City</span>
+                <MapPin size={18} className="text-blue-400" />
+                <span className="text-gray-400">123 Healthcare St, Medical City, CA 90210</span>
               </div>
             </div>
 
-            <div className="mt-6">
-              <h5 className="font-semibold mb-2 text-light-blue">Download Our App</h5>
-              <div className="flex space-x-2">
-                <button className="bg-dark-blue text-white px-3 py-2 rounded text-sm hover:bg-medium-blue transition-colors">
+            <div className="mt-8">
+              <h5 className="font-semibold mb-3 text-white">Download Our App</h5>
+              <div className="flex space-x-3">
+                <button className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-blue-700 transition-colors duration-300 shadow-md">
                   App Store
                 </button>
-                <button className="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors">
+                <button className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-green-700 transition-colors duration-300 shadow-md">
                   Google Play
                 </button>
               </div>
@@ -99,16 +99,15 @@ const Footer: React.FC = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-700 mt-8 pt-8">
+        <div className="border-t border-gray-700 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-gray-400 text-sm mb-4 md:mb-0">
-              © 2025 PharmaGo. All rights reserved. Licensed Pharmacy License #12345
-            </div>
-            <div className="flex space-x-6 text-sm">
-              <a href="/privacy-policy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a> {/* Updated href */}
-              <a href="/terms-of-service" className="text-gray-400 hover:text-white transition-colors">Terms of Service</a> {/* Updated href */}
-              {/* Removed Return Policy link */}
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">Help Center</a>
+            <div className="text-gray-500 text-sm mb-4 md:mb-0">
+              © {new Date().getFullYear()} MedGo. All rights reserved.
+            </div> 
+            <div className="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
+              <a href="/privacy-policy" className="text-gray-500 hover:text-white transition-colors duration-300">Privacy Policy</a>
+              <a href="/terms-of-service" className="text-gray-500 hover:text-white transition-colors duration-300">Terms of Service</a>
+              <a href="#" className="text-gray-500 hover:text-white transition-colors duration-300">Help Center</a>
             </div>
           </div>
         </div>

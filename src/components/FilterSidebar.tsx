@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Filter } from 'lucide-react';
-import { FilterOptions } from '../types';
+import { FilterOptions, Product } from '../types'; // Import Product type
 import { useLanguage } from '../contexts/LanguageContext';
+import { db } from '../firebaseConfig'; // Import db
+import { collection, getDocs } from 'firebase/firestore'; // Import Firestore functions
 
 interface FilterSidebarProps {
   isOpen: boolean;
@@ -18,15 +20,39 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 }) => {
   const { t, isRTL } = useLanguage();
 
-  const brands = [
-    'Panadol', 'GlaxoSmithKline', 'Abbott', 'Novartis', 
-    'Bayer', 'Pfizer', 'Sanofi', 'Roche'
-  ];
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availablePharmacyNames, setAvailablePharmacyNames] = useState<string[]>([]);
 
-  const categories = [
-    'Medications', 'Skin Care', 'Vitamins', 'Baby Care', 
-    'Pet Care', 'Medical Devices'
-  ];
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const productsCollectionRef = collection(db, 'products');
+        const querySnapshot = await getDocs(productsCollectionRef);
+        const products: Product[] = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Product[];
+
+        const uniqueBrands = Array.from(new Set(products.map(p => p.brand))).sort();
+        const uniqueCategories = Array.from(new Set(products.map(p => p.category))).sort();
+        const uniquePharmacyNames = Array.from(new Set(products.map(p => p.pharmacyName).filter(Boolean) as string[])).sort();
+
+        setAvailableBrands(uniqueBrands);
+        setAvailableCategories(uniqueCategories);
+        setAvailablePharmacyNames(uniquePharmacyNames);
+
+      } catch (error) {
+        console.error('Error fetching filter options:', error);
+        // Fallback to hardcoded values if Firestore fails
+        setAvailableBrands(['Panadol', 'GlaxoSmithKline', 'Abbott', 'Novartis', 'Bayer', 'Pfizer', 'Sanofi', 'Roche']);
+        setAvailableCategories(['Medications', 'Skin Care', 'Vitamins', 'Baby Care', 'Pet Care', 'Medical Devices']);
+        setAvailablePharmacyNames([]); // No fallback for pharmacy names if not fetched
+      }
+    };
+
+    fetchFilterOptions();
+  }, []);
 
   const deliveryOptions = ['90min', 'scheduled'];
 
@@ -59,6 +85,17 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     });
   };
 
+  const handlePharmacyNameToggle = (pharmacyName: string) => {
+    const newPharmacyNames = filters.pharmacyNames.includes(pharmacyName)
+      ? filters.pharmacyNames.filter(p => p !== pharmacyName)
+      : [...filters.pharmacyNames, pharmacyName];
+    
+    onFiltersChange({
+      ...filters,
+      pharmacyNames: newPharmacyNames
+    });
+  };
+
   const handleDeliveryToggle = (delivery: string) => {
     const newDelivery = filters.deliveryTime.includes(delivery)
       ? filters.deliveryTime.filter(d => d !== delivery)
@@ -77,6 +114,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       categories: [],
       inStockOnly: false,
       deliveryTime: [],
+      pharmacyNames: [], // Clear pharmacy names filter
+      minRating: 0, // Reset minRating
     });
   };
 
@@ -153,16 +192,16 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             {/* Brands */}
             <div className="pb-6 border-b border-gray-100">
               <h4 className="font-semibold text-lg text-gray-800 mb-4">{t('brand')}</h4>
-              <div className="space-y-3 max-h-48 overflow-y-auto pr-2"> {/* Increased space-y, added right padding */}
-                {brands.map((brand) => (
-                  <label key={brand} className="flex items-center space-x-3 cursor-pointer hover:text-dark-blue transition-colors"> {/* Increased space-x */}
+              <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                {availableBrands.map((brand) => (
+                  <label key={brand} className="flex items-center space-x-3 cursor-pointer hover:text-dark-blue transition-colors">
                     <input
                       type="checkbox"
                       checked={filters.brands.includes(brand)}
                       onChange={() => handleBrandToggle(brand)}
                       className="h-5 w-5 rounded border-gray-300 text-dark-blue focus:ring-dark-blue transition-colors duration-200"
                     />
-                    <span className="text-base text-gray-700">{brand}</span> {/* Increased text size */}
+                    <span className="text-base text-gray-700">{brand}</span>
                   </label>
                 ))}
               </div>
@@ -171,8 +210,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             {/* Categories */}
             <div className="pb-6 border-b border-gray-100">
               <h4 className="font-semibold text-lg text-gray-800 mb-4">{t('category')}</h4>
-              <div className="space-y-3">
-                {categories.map((category) => (
+              <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                {availableCategories.map((category) => (
                   <label key={category} className="flex items-center space-x-3 cursor-pointer hover:text-dark-blue transition-colors">
                     <input
                       type="checkbox"
@@ -181,6 +220,24 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       className="h-5 w-5 rounded border-gray-300 text-dark-blue focus:ring-dark-blue transition-colors duration-200"
                     />
                     <span className="text-base text-gray-700">{category}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Pharmacy Names */}
+            <div className="pb-6 border-b border-gray-100">
+              <h4 className="font-semibold text-lg text-gray-800 mb-4">Pharmacy</h4>
+              <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                {availablePharmacyNames.map((pharmacyName) => (
+                  <label key={pharmacyName} className="flex items-center space-x-3 cursor-pointer hover:text-dark-blue transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={filters.pharmacyNames.includes(pharmacyName)}
+                      onChange={() => handlePharmacyNameToggle(pharmacyName)}
+                      className="h-5 w-5 rounded border-gray-300 text-dark-blue focus:ring-dark-blue transition-colors duration-200"
+                    />
+                    <span className="text-base text-gray-700">{pharmacyName}</span>
                   </label>
                 ))}
               </div>

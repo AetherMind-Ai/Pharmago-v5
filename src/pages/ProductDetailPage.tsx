@@ -10,7 +10,7 @@ import {
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import { db } from '../firebaseConfig'; // Import db
-import { collection, query, where, orderBy, addDoc, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore'; // Firestore imports, add getDoc
+import { collection, query, where, orderBy, addDoc, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore'; // Firestore imports, add getDoc, updateDoc
 import { toast } from 'react-toastify'; // Import toast
 import ConfirmationDialog from '../components/ConfirmationDialog'; // Import ConfirmationDialog
 
@@ -163,7 +163,21 @@ const ProductDetailPage: React.FC = () => {
         setNewCommentText('');
         setNewRating(0);
         setHoverRating(0);
-        fetchComments(); // Re-fetch comments to update the list
+        await fetchComments(); // Re-fetch comments to update the list
+        // After fetching comments, update the product's rating and reviewCount
+        if (product) {
+          const updatedComments = await getDocs(query(collection(db, 'comments'), where('productId', '==', product.id)));
+          const totalRating = updatedComments.docs.reduce((sum, doc) => sum + doc.data().rating, 0);
+          const newReviewCount = updatedComments.docs.length;
+          const newAverageRating = newReviewCount > 0 ? totalRating / newReviewCount : 0;
+
+          const productDocRef = doc(db, 'products', product.id);
+          await updateDoc(productDocRef, {
+            rating: newAverageRating,
+            reviewCount: newReviewCount,
+          });
+          setProduct(prevProduct => prevProduct ? { ...prevProduct, rating: newAverageRating, reviewCount: newReviewCount } : undefined);
+        }
       } catch (error) {
         console.error('Error submitting comment:', error);
         toast.error('Failed to submit comment.');
@@ -185,7 +199,21 @@ const ProductDetailPage: React.FC = () => {
       try {
         await deleteDoc(doc(db, 'comments', commentToDelete.id));
         toast.success('Comment deleted successfully!');
-        fetchComments(); // Re-fetch comments to update the list
+        await fetchComments(); // Re-fetch comments to update the list
+        // After fetching comments, update the product's rating and reviewCount
+        if (product) {
+          const updatedComments = await getDocs(query(collection(db, 'comments'), where('productId', '==', product.id)));
+          const totalRating = updatedComments.docs.reduce((sum, doc) => sum + doc.data().rating, 0);
+          const newReviewCount = updatedComments.docs.length;
+          const newAverageRating = newReviewCount > 0 ? totalRating / newReviewCount : 0;
+
+          const productDocRef = doc(db, 'products', product.id);
+          await updateDoc(productDocRef, {
+            rating: newAverageRating,
+            reviewCount: newReviewCount,
+          });
+          setProduct(prevProduct => prevProduct ? { ...prevProduct, rating: newAverageRating, reviewCount: newReviewCount } : undefined);
+        }
       } catch (error) {
         console.error('Error deleting comment:', error);
         toast.error('Failed to delete comment.');
@@ -213,9 +241,14 @@ const ProductDetailPage: React.FC = () => {
   const handleBuyNow = () => {
     if (product) {
       // Do NOT add to cart, navigate directly with product state
-      navigate('/payup', { state: { productToBuy: product } });
+      navigate('/checkout', { state: { productToBuy: product } });
     }
   };
+
+  const averageRating = comments.length > 0
+    ? comments.reduce((acc, comment) => acc + comment.rating, 0) / comments.length
+    : 0;
+  const totalReviews = comments.length;
 
   if (!product || authLoading) { // Show loading if auth is still loading
     return <div className="pt-[80px] text-center">Loading product or user data...</div>;
@@ -262,11 +295,11 @@ const ProductDetailPage: React.FC = () => {
                 <Star
                   key={star}
                   size={18}
-                  className={star <= product.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}
+                  className={star <= averageRating ? 'text-yellow-400 fill-current' : 'text-gray-300'}
                 />
               ))}
             </div>
-            <span className="text-sm text-gray-600">({product.reviewCount} reviews)</span>
+            <span className="text-sm text-gray-600">({totalReviews} reviews)</span>
           </div>
 
           <div className="mb-6">
@@ -297,7 +330,7 @@ const ProductDetailPage: React.FC = () => {
               )}
                {/* Display Pharmacy Name */}
                {product.pharmacyName && (
-                 <p><span className="font-semibold">Sold By:</span> {product.pharmacyName}</p>
+                 <p><span className="font-semibold">Pharmacy:</span> {product.pharmacyName}</p>
                )}
                 {/* Display Product Amount */}
                {product.productAmount !== undefined && (

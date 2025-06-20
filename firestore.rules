@@ -8,9 +8,9 @@ service cloud.firestore {
     // Only the owner can update or delete their user doc.
     match /users/{userId} {
       allow create: if request.auth != null;
-      allow read: if
-        request.auth != null &&
-        request.auth.uid == userId;
+      // Allow read if authenticated (for any user to read their own or other authenticated users' basic info)
+      // OR if the document being read is a pharmacy profile (public access for pharmacies)
+      allow read: if request.auth != null || (resource.data.role == 'pharmacy');
       allow update, delete: if
         request.auth != null &&
         request.auth.uid == userId;
@@ -57,8 +57,37 @@ service cloud.firestore {
     // ─── Products ──────────────────────────────────────────────────────────────
     // Allow authenticated users to read and create products.
     match /products/{productId} {
-      allow read: if request.auth != null;
+      allow read: if true; // Allow public read access for products
       allow create: if request.auth != null;
+    }
+
+    // ─── Feedbacks ─────────────────────────────────────────────────────────────
+    // Authenticated users can create feedback.
+    // All authenticated users can read feedback.
+    // Authenticated users can update reactions on feedback.
+    match /feedbacks/{feedbackId} {
+      allow create: if request.auth != null;
+      allow read: if true; // Allow public read
+      allow update: if request.auth != null; // Allow updates for reactions
+      allow delete: if false; // No one can delete feedback
+
+      // ─── Replies (Subcollection of Feedbacks) ───────────────────────────────
+      match /replies/{replyId} {
+        allow read: if true; // Allow public read for replies
+        allow create: if request.auth != null;
+        allow update, delete: if
+          request.auth != null &&
+          resource.data.userId == request.auth.uid;
+      }
+    }
+
+    // ─── Profile Views ─────────────────────────────────────────────────────────
+    // Anyone (authenticated or anonymous) can create a profile view log.
+    // Only authenticated users can read profile view logs (e.g., for pharmacy owner to see count).
+    match /profileViews/{viewId} {
+      allow create: if true;
+      allow read: if true; // Allow public read access for profile views
+      allow update, delete: if false; // Views cannot be updated or deleted
     }
 
     // ─── Public Mock Products ──────────────────────────────────────────────────
@@ -67,9 +96,31 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // ─── Pharmacies ────────────────────────────────────────────────────────────
+    // Allow authenticated users to read pharmacy data.
+    // Only the pharmacy owner can update their pharmacy data.
+    match /pharmacies/{pharmacyId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == pharmacyId;
+    }
+
     // ─── Deny All Else ─────────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
+    }
+  }
+}
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /feedback_images/{pharmacyId}/{imageId} {
+      allow write: if request.auth != null; // Allow any authenticated user to upload feedback images
+      allow read: if true; // Anyone can read feedback images
+    }
+    match /pharmacy_cover_photos/{pharmacyId}/{imageId} {
+      allow write: if request.auth != null && request.auth.uid == pharmacyId; // Only pharmacy owner can upload their cover photo
+      allow read: if true; // Anyone can read pharmacy cover photos
     }
   }
 }

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Product } from '../types'; // Assuming Product type is available
+import { Product, UserData } from '../types'; // Assuming Product and UserData types are available
+import { db } from '../firebaseConfig'; // Import db
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'; // Import Firestore functions
 
 // --- Using react-icons for a polished look ---
 import {
@@ -32,21 +34,65 @@ const Payup: React.FC = () => {
   const [vodafoneCashNumber, setVodafoneCashNumber] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [isCopied, setIsCopied] = useState(false);
+  const [recipientVodafoneCashNumber, setRecipientVodafoneCashNumber] = useState(import.meta.env.VITE_VODAFONE_CASH_NUMBER || ''); // Default to .env or fallback
+  const [paymentMethod, setPaymentMethod] = useState<'vodafoneCash' | 'cashOnDelivery'>('cashOnDelivery'); // New state for payment method
 
   // Update state if userData changes (e.g., after login)
   useEffect(() => {
     if (userData) {
       setName(userData.fullName || '');
       setPhone(userData.phoneNumber || '');
-      // Address is manually entered, so do not pre-fill from userData
     }
   }, [userData]);
 
-  // The Vodafone Cash number for your business, loaded from .env
-  const RECIPIENT_VODAFONE_CASH_NUMBER = import.meta.env.VITE_VODAFONE_CASH_NUMBER || '01030670504';
+  // Fetch pharmacy Vodafone Cash number based on product or OBP data
+  useEffect(() => {
+    const fetchPharmacyVodafoneCash = async () => {
+      let targetPharmacyName: string | undefined;
+
+      if (productToBuy && productToBuy.pharmacyName) {
+        targetPharmacyName = productToBuy.pharmacyName;
+      } else if (obpOrderData && obpOrderData.pharmacyName) {
+        targetPharmacyName = obpOrderData.pharmacyName;
+      }
+
+      if (targetPharmacyName) {
+        try {
+          // Assuming pharmacy names are unique and stored in user documents with role 'pharmacy'
+          const usersCollectionRef = collection(db, 'users');
+          const q = query(usersCollectionRef, where('role', '==', 'pharmacy')); // Fetch all pharmacy users
+          const querySnapshot = await getDocs(q);
+
+          let foundVodafoneCash = false;
+          for (const doc of querySnapshot.docs) {
+            const pharmacyData = doc.data() as UserData;
+            // Perform a case-insensitive match on pharmacy name
+            if (pharmacyData.pharmacyInfo?.name?.toLowerCase() === targetPharmacyName.toLowerCase()) {
+              if (pharmacyData.pharmacyInfo?.vodafoneCash) {
+                setRecipientVodafoneCashNumber(pharmacyData.pharmacyInfo.vodafoneCash);
+                foundVodafoneCash = true;
+                break; // Found the matching pharmacy, exit loop
+              } else {
+                console.warn(`Pharmacy ${targetPharmacyName} found, but no Vodafone Cash number.`);
+              }
+            }
+          }
+
+          if (!foundVodafoneCash) {
+            console.warn(`Pharmacy ${targetPharmacyName} not found or no Vodafone Cash number available.`);
+          }
+        } catch (error) {
+          console.error('Error fetching pharmacy Vodafone Cash number:', error);
+        }
+      }
+    };
+
+    fetchPharmacyVodafoneCash();
+  }, [productToBuy, obpOrderData]);
+
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(RECIPIENT_VODAFONE_CASH_NUMBER);
+    navigator.clipboard.writeText(recipientVodafoneCashNumber);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
   };
@@ -55,18 +101,18 @@ const Payup: React.FC = () => {
     e.preventDefault();
     // In a real app, you would send this to a backend for verification.
     // The alert is a placeholder for this logic.
-    console.log({
+    const orderDetails = {
       name,
       phone,
       address,
-      paymentMethod: 'Vodafone Cash',
-      senderVodafoneCash: vodafoneCashNumber,
-      transactionId,
+      paymentMethod: 'Cash on Delivery',
       total: calculateTotalWithExtras(), // Use the total with shipping and tax
       items: productToBuy ? [productToBuy] : (obpProducts || items), // Log either the single product, OBP products, or cart items
       orderType: obpOrderData ? 'Prescription Order' : (productToBuy ? 'Direct Buy' : 'Cart Order'),
       obpOrderDetails: obpOrderData, // Include OBP specific data if available
-    });
+    };
+
+    console.log(orderDetails);
 
     alert('Order successfully placed! You will be redirected.');
 
@@ -290,44 +336,29 @@ const Payup: React.FC = () => {
                     <FiCreditCard className="text-indigo-500" />
                     Payment Method
                 </h2>
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-indigo-900">
-                  <div className="flex items-center gap-3">
-                    <FiSmartphone size={20} />
-                    <p className="font-semibold">Vodafone Cash (EGP Only)</p>
-                  </div>
-                  <p className="text-sm mt-3">
-                    Please transfer a total of <span className="font-bold">{calculateTotalWithExtras().toFixed(2)} EGP</span> to this number:
-                  </p>
-                  <div className="flex items-center justify-between bg-white border border-indigo-200 rounded-md p-3 mt-2">
-                    <span className="text-lg font-mono tracking-wider text-indigo-900">{RECIPIENT_VODAFONE_CASH_NUMBER}</span>
-                    <button type="button" onClick={handleCopy} className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
-                      {isCopied ? <FiCheckCircle className="text-green-500"/> : <FiCopy />}
-                      {isCopied ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
-                  <p className="text-xs mt-4">After payment, fill in your details below to confirm your order.</p>
-
-                  <div className="mt-4 space-y-4">
-                     <div className="relative">
-                        <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="tel"
-                          id="vodafoneCashNumber"
-                          value={vodafoneCashNumber}
-                          onChange={e => setVodafoneCashNumber(e.target.value)}
-                          onKeyPress={(event) => {
-                            if (!/[0-9]/.test(event.key)) {
-                              event.preventDefault();
-                            }
-                          }}
-                          placeholder="Your Vodafone Cash Number"
-                          className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                          maxLength={11}
-                          required
-                        />
-                     </div>
-                     <input type="text" id="transactionId" value={transactionId} onChange={e => setTransactionId(e.target.value)} placeholder="Transaction ID (Optional)" className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors" />
-                  </div>
+                <div className="space-y-4">
+                  {/* Cash on Delivery Option */}
+                  <label
+                    className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                      paymentMethod === 'cashOnDelivery'
+                        ? 'bg-indigo-50 border-indigo-500'
+                        : 'bg-white border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="cashOnDelivery"
+                      checked={paymentMethod === 'cashOnDelivery'}
+                      onChange={() => setPaymentMethod('cashOnDelivery')}
+                      className="form-radio h-5 w-5 text-indigo-600"
+                    />
+                    <div className="ml-3 flex-1">
+                      <span className="block text-lg font-semibold text-gray-800">Cash on Delivery</span>
+                      <span className="block text-sm text-gray-600">Pay with cash when your order arrives.</span>
+                    </div>
+                    <FiCreditCard size={24} className="text-indigo-500" />
+                  </label>
                 </div>
               </div>
 

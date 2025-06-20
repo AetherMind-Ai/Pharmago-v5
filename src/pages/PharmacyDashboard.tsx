@@ -14,6 +14,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler, // Import Filler plugin
 } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
 
@@ -26,7 +27,8 @@ ChartJS.register(
   ArcElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler // Register Filler plugin
 );
 
 const PharmacyDashboard: React.FC = () => {
@@ -157,9 +159,9 @@ const PharmacyDashboard: React.FC = () => {
             <NavLink to="/dashboard/pharmacy" icon={<FaTachometerAlt />}>Dashboard</NavLink>
             <NavLink to="/dashboard/pharmacy/products" icon={<FaBox />}>Products</NavLink>
             <NavLink to="/dashboard/pharmacy/new-product" icon={<FaPlusCircle />}>Add Product</NavLink>
-            <NavLink to="/dashboard/pharmacy/profile" icon={<FaUserAlt />}>Profile</NavLink>
+            {/* Link to Pharmacy Profile Page, passing the current user's UID as the ID */}
+            <NavLink to={`/profile/pharmacy/${user.uid}`} icon={<FaUserAlt />}>Profile</NavLink>
             <NavLink to="/account" icon={<FaUserAlt />}>Account</NavLink>
-            <NavLink to="/dashboard/pharmacy/profit" icon={<FaChartBar />}>Profit</NavLink>
             
             {/* Spacer to push sign out to the bottom */}
 
