@@ -37,7 +37,7 @@ const RoleSelectionPage: React.FC = () => {
       toast.success('Role selected successfully!', { position: 'bottom-left' }); // Add success toast
 
       if (selectedRole === 'Pharmacy') {
-        navigate('/verify/pharmacy');
+        navigate('/verify-pharmacy');
       } else {
         navigate('/account');
       }

@@ -29,9 +29,15 @@ const ProductDetailPage: React.FC = () => {
   // State for new comment form
   const { user, userData, loading: authLoading } = useAuth(); // Get user and userData from AuthContext
   const [newCommentText, setNewCommentText] = useState('');
-  const [newUsername, setNewUsername] = useState(userData?.username || ''); // Default to user's username
+  const [newUsername, setNewUsername] = useState('');
   const [newRating, setNewRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+
+  useEffect(() => {
+    if (userData?.username) {
+      setNewUsername(userData.username);
+    }
+  }, [userData]);
 
   // MODIFIED: Refs for the new zoom logic
   const imageRef = useRef<HTMLImageElement>(null);
@@ -179,8 +185,6 @@ const ProductDetailPage: React.FC = () => {
           setProduct(prevProduct => prevProduct ? { ...prevProduct, rating: newAverageRating, reviewCount: newReviewCount } : undefined);
         }
       } catch (error) {
-        console.error('Error submitting comment:', error);
-        toast.error('Failed to submit comment.');
       }
     }
   };
@@ -215,8 +219,6 @@ const ProductDetailPage: React.FC = () => {
           setProduct(prevProduct => prevProduct ? { ...prevProduct, rating: newAverageRating, reviewCount: newReviewCount } : undefined);
         }
       } catch (error) {
-        console.error('Error deleting comment:', error);
-        toast.error('Failed to delete comment.');
       } finally {
         setShowDeleteConfirm(false);
         setCommentToDelete(null);

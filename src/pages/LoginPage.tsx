@@ -1,22 +1,32 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { FcGoogle } from 'react-icons/fc';
+import { FaHome } from 'react-icons/fa';
 import { Lock, User as UserIcon, CheckCircle } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
   const { loading, signInWithGoogle } = useAuth();
   const [fullName, setFullName] = useState('');
   const [fullNameError, setFullNameError] = useState('');
   const [isFullNameValid, setIsFullNameValid] = useState(false);
 
   const validateFullName = (name: string) => {
-    const nameParts = name.trim().split(/\s+/);
-    const isValid = nameParts.length === 4;
+    const nameParts = name.trim().split(/\s+/).filter(part => part.length > 0);
+    const containsNumbers = /\d/.test(name); // Check if the name contains any numbers
+    const allPartsValidLength = nameParts.every(part => part.length >= 3);
+    const isValid = nameParts.length === 4 && allPartsValidLength && !containsNumbers;
+
     setIsFullNameValid(isValid);
     if (!name.trim()) {
       setFullNameError('Please enter your full name.');
-    } else if (!isValid) {
-      setFullNameError('Full name must contain exactly 4 names.');
+    } else if (containsNumbers) {
+      setFullNameError('Full name cannot contain numbers.');
+    } else if (!allPartsValidLength) {
+      setFullNameError('Each name must be 3 letters or more.');
+    } else if (nameParts.length !== 4) {
+      setFullNameError('Full name must consist of exactly 4 names.');
     } else {
       setFullNameError('');
     }
@@ -29,11 +39,13 @@ const LoginPage: React.FC = () => {
   };
 
   const handleGoogleSignIn = () => {
+    // Re-validate just before submission to catch any last-minute changes
+    validateFullName(fullName);
     if (!isFullNameValid) {
-      setFullNameError('Please enter a valid full name (exactly 4 names).');
+      // If validation fails, the error message will be set by validateFullName
       return;
     }
-    setFullNameError('');
+    setFullNameError(''); // Clear any previous error
     signInWithGoogle(fullName); // Pass fullName to signInWithGoogle
   };
 
@@ -51,11 +63,18 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-purple-100 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-10 w-full max-w-md transform transition-all duration-300 hover:scale-[1.01] border border-gray-200">
+      <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-10 w-full max-w-md transform transition-all duration-300 hover:scale-[1.01] border border-gray-200 relative">
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 right-4 text-blue-600 hover:text-blue-800 transition-all duration-200"
+          title="Go to Home Page"
+        >
+          <FaHome size={24} />
+        </button>
         <div className="flex justify-center mb-6">
            <Lock size={48} className="text-blue-600" />
         </div>
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-2 text-center">Secure Access</h2>
+        <h2 className="text-3xl font-extrabold text-gray-900 mb-2 text-center">Register Account</h2>
         <p className="text-gray-600 text-center mb-8">Sign in to manage your health needs.</p>
 
         <div className="space-y-6">
@@ -88,7 +107,7 @@ const LoginPage: React.FC = () => {
 
           <div className="relative flex items-center">
             <div className="flex-grow border-t border-gray-300"></div>
-            <span className="flex-shrink mx-4 text-gray-400 text-sm">Or Continue With</span>
+            <span className="flex-shrink mx-4 text-gray-400 text-sm">And Continue With</span>
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
 
@@ -102,7 +121,7 @@ const LoginPage: React.FC = () => {
           </button>
 
           <p className="text-center text-gray-500 text-sm">
-            By signing in, you agree to our <a href="#" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>.
+            By signing in, you agree to our <button onClick={() => navigate('/terms-of-service')} className="text-blue-600 hover:underline bg-transparent border-none cursor-pointer p-0">Terms of Service</button> and <button onClick={() => navigate('/privacy-policy')} className="text-blue-600 hover:underline bg-transparent border-none cursor-pointer p-0">Privacy Policy</button>.
           </p>
         </div>
       </div>

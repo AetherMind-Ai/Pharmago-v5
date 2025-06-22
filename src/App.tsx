@@ -24,37 +24,66 @@ import PharmacyInfoPage from './pages/PharmacyInfoPage'; // Import PharmacyInfoP
 import AddProductPage from './pages/AddProductPage'; // Import AddProductPage
 import PharmacyProductsPage from './pages/PharmacyProductsPage.tsx'; // Import PharmacyProductsPage
 import { PharmacyProfilePage } from './pages/PharmacyProfilePage'; // Import PharmacyProfilePage
+import CenterPage from './pages/CenterPage'; // Import CenterPage
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Navigate } from 'react-router-dom'; // Import Navigate
 import { toast } from 'react-toastify'; // Import toast
+import PharmacyLoginVerificationPage from './pages/PharmacyLoginVerificationPage'; // Import new page
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ element: React.ReactElement; requiredRole?: string }> = ({ element, requiredRole }) => {
   const { user, userData, loading } = useAuth();
 
   if (loading) {
-    // Optionally render a loading spinner or null while checking auth
-    return null;
+    return null; // Or a loading spinner
   }
 
   if (!user) {
-    // Redirect to login if not authenticated
-    toast.info('You need to be logged in to access this page.');
     return <Navigate to="/login" replace />;
   }
 
-  // If a required role is specified, check user data and role
-  if (requiredRole) {
-    if (!userData || userData.role !== requiredRole) {
-      // Redirect if user data is not loaded or role doesn't match
-      toast.error(`Access denied. You must have the '${requiredRole}' role to view this page.`);
-      return <Navigate to="/" replace />; // Redirect to home or an unauthorized page
-    }
+  // If user exists but userData is still loading or not fetched, wait
+  if (user && !userData && loading) {
+    return null; // Or a loading spinner
   }
 
-  return element; // Render the protected element if authenticated and role matches (if required)
+  if (requiredRole && userData?.role !== requiredRole) {
+    // If user is logged in but doesn't have the required role, redirect to account
+    return <Navigate to="/account" replace />;
+  }
+
+  return element;
 };
+
+// Specific Route for Pharmacy Verification Flow
+const PharmacyVerificationRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
+  const { user, userData, loading } = useAuth();
+
+  if (loading) {
+    return null; // Or a loading spinner
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // If user exists but userData is still loading or not fetched, wait
+  if (user && !userData && loading) {
+    return null; // Or a loading spinner
+  }
+
+  if (userData?.role !== 'Pharmacy') { // Ensure role check is 'Pharmacy'
+    return <Navigate to="/account" replace />; // Redirect non-pharmacy users
+  }
+
+  if (userData?.isPharmacyVerified) {
+    return <Navigate to="/dashboard/pharmacy" replace />; // Redirect if already verified
+  }
+
+  return element;
+};
+
 
 // New component to wrap content inside Router
 const AppContent: React.FC = () => {
@@ -75,8 +104,8 @@ const AppContent: React.FC = () => {
                   <Route path="/account" element={<AccountPage />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicyPage />} /> {/* New route */}
                   <Route path="/terms-of-service" element={<TermsOfServicePage />} /> {/* New route */}
-                  <Route path="/number" element={<NumberInputPage />} /> {/* New route */}
-                  <Route path="/role" element={<RoleSelectionPage />} /> {/* New route */}
+                  <Route path="/number" element={<ProtectedRoute element={<NumberInputPage />} />} />
+                  <Route path="/role" element={<ProtectedRoute element={<RoleSelectionPage />} />} />
                   <Route path="/dashboard/delivery" element={<DeliveryDashboard />} /> {/* New route */}
                   {/* Protect the Pharmacy Dashboard route */}
                   <Route path="/dashboard/pharmacy" element={<ProtectedRoute element={<PharmacyDashboard />} requiredRole="pharmacy" />} />
@@ -84,8 +113,12 @@ const AppContent: React.FC = () => {
                   <Route path="/product/:productId" element={<ProductDetailPage />} /> {/* Route for product detail page */}
                   <Route path="/checkout" element={<Payup />} /> {/* New route for Payup page */}
                   <Route path="/obp" element={<OrderPrescriptionPage />} /> {/* New route for Order by Prescription page */}
-                  <Route path="/verify/pharmacy" element={<VerifyPharmacyPage />} /> {/* New route for Pharmacy Verification page */}
-                  <Route path="/info/pharmacy" element={<PharmacyInfoPage />} /> {/* New route for Pharmacy Info page */}
+                  {/* Initial Pharmacy Verification (OTP generation and sending) */}
+                  <Route path="/verify-pharmacy" element={<PharmacyVerificationRoute element={<VerifyPharmacyPage />} />} />
+                  {/* Pharmacy Info Page (after initial verification) */}
+                  <Route path="/info-pharmacy" element={<ProtectedRoute element={<PharmacyInfoPage />} requiredRole="Pharmacy" />} />
+                  {/* Pharmacy Login Verification Page (for returning pharmacies) */}
+                  <Route path="/verify-pharmacy-login" element={<PharmacyVerificationRoute element={<PharmacyLoginVerificationPage />} />} />
                   {/* Protect Pharmacy related routes */}
                   <Route 
                     path="/dashboard/pharmacy/new-product" 
@@ -96,6 +129,7 @@ const AppContent: React.FC = () => {
                     element={<ProtectedRoute element={<PharmacyProductsPage />} requiredRole="pharmacy" />} 
                   />
                   <Route path="/profile/pharmacy/:id" element={<PharmacyProfilePage />} /> {/* New route for Pharmacy Profile Page */}
+                  <Route path="/center" element={<CenterPage />} /> {/* New route for Help Center Page */}
                 </Routes>
               </main>
               <Footer />

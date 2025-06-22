@@ -35,16 +35,20 @@ export interface UserData {
   role?: string; // Added role
   photoDataUrl?: string; // Added photoDataUrl
   aboutMe?: string; // Added aboutMe
+  isPharmacyVerified?: boolean; // Added flag for pharmacy verification status
   // Add pharmacyInfo for Pharmacy role
-  pharmacyInfo?: {
-    name: string;
-    vodafoneCash: string;
-    address: string;
-    mapLink: string;
-    logoImage: string | null;
-    pharmacyImages: Array<string | null>;
-    coverPhoto?: string; // Added coverPhoto
-  };
+    pharmacyInfo?: {
+      pharmacyId: string; // Added pharmacyId
+      mtp?: string; // Added Master Transaction Password for pharmacy login
+      name: string;
+      vodafoneCash: string;
+      address: string;
+      mapLink: string;
+      logoImage: string | null;
+      pharmacyImages: Array<string | null>;
+      coverPhoto?: string; // Added coverPhoto
+      profileViews: number; // Added profileViews
+    };
   address?: { // Added address for general users
     line1: string;
     city: string;

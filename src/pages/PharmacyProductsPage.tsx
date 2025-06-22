@@ -4,7 +4,7 @@ import { db } from '../firebaseConfig'; // Assuming firebaseConfig exports db
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { Link } from 'react-router-dom'; // Import Link for navigation
 import ProductCard from '../components/ProductCard'; // Import ProductCard
-import { Product } from '../types'; // Import Product interface
+import { Product, Feedback } from '../types'; // Import Product and Feedback interfaces
 
 const PharmacyProductsPage: React.FC = () => {
   const { userData, loading: authLoading } = useAuth();
@@ -45,8 +45,8 @@ const PharmacyProductsPage: React.FC = () => {
             tags: data.tags || [],
             description: data.description || 'No description available.', // Default
             inStock: data.inStock ?? true, // Default to true
-            rating: data.rating || 0, // Default to 0
-            reviewCount: data.reviewCount || 0, // Default to 0
+            rating: 0, // Initialize rating
+            reviewCount: 0, // Initialize reviewCount
             deliveryTime: data.deliveryTime || '2-3 days', // Default
             prescriptionRequired: data.prescriptionRequired || false, // Default
             originalPrice: data.originalPrice || undefined, // Optional
@@ -57,8 +57,31 @@ const PharmacyProductsPage: React.FC = () => {
           });
         });
 
-        setProducts(productsList);
-        setFilteredProducts(productsList);
+          // Fetch comments for each product to calculate rating and reviewCount
+          const productsWithReviews = await Promise.all(productsList.map(async (product) => {
+            const commentsQuery = query(collection(db, 'comments'), where('productId', '==', product.id));
+            const commentsSnapshot = await getDocs(commentsQuery);
+            
+            let totalRating = 0;
+            let reviewCount = 0;
+
+            commentsSnapshot.forEach((doc) => {
+              const commentData = doc.data();
+              totalRating += commentData.rating;
+              reviewCount++;
+            });
+
+            const averageRating = reviewCount > 0 ? totalRating / reviewCount : 0;
+
+            return {
+              ...product,
+              rating: averageRating,
+              reviewCount: reviewCount,
+            };
+          }));
+
+        setProducts(productsWithReviews);
+        setFilteredProducts(productsWithReviews);
 
       } catch (err) {
         console.error("Error fetching pharmacy products:", err);

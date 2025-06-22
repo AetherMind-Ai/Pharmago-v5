@@ -8,9 +8,10 @@ service cloud.firestore {
     // Only the owner can update or delete their user doc.
     match /users/{userId} {
       allow create: if request.auth != null;
-      // Allow read if authenticated (for any user to read their own or other authenticated users' basic info)
-      // OR if the document being read is a pharmacy profile (public access for pharmacies)
-      allow read: if request.auth != null || (resource.data.role == 'pharmacy');
+      // Allow authenticated users to read their own user doc.
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow public read for pharmacy user profiles.
+      allow read: if resource.data.role == 'pharmacy';
       allow update, delete: if
         request.auth != null &&
         request.auth.uid == userId;
@@ -37,7 +38,7 @@ service cloud.firestore {
       // Allows any authenticated user to read all products.
       // Only the owner can create or delete products in their own subcollection.
       match /newproduct/{documentId} {
-        allow read: if request.auth != null;
+        allow read: if true; // Allow public read access for new products
         allow create, update, delete: if // Added 'update' permission
           request.auth != null &&
           request.auth.uid == userId;
@@ -68,16 +69,17 @@ service cloud.firestore {
     match /feedbacks/{feedbackId} {
       allow create: if request.auth != null;
       allow read: if true; // Allow public read
-      allow update: if request.auth != null; // Allow updates for reactions
-      allow delete: if false; // No one can delete feedback
+      allow update: if true; // TEMPORARY: Allow any user to update reactions for testing
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid; // Only the feedback owner can delete feedback
 
       // ─── Replies (Subcollection of Feedbacks) ───────────────────────────────
       match /replies/{replyId} {
         allow read: if true; // Allow public read for replies
         allow create: if request.auth != null;
-        allow update, delete: if
+        allow update: if true; // TEMPORARY: Allow any user to update replies for testing
+        allow delete: if
           request.auth != null &&
-          resource.data.userId == request.auth.uid;
+          resource.data.userId == request.auth.uid; // Only the reply owner can delete
       }
     }
 
@@ -87,7 +89,8 @@ service cloud.firestore {
     match /profileViews/{viewId} {
       allow create: if true;
       allow read: if true; // Allow public read access for profile views
-      allow update, delete: if false; // Views cannot be updated or deleted
+      allow update: if request.auth != null; // Allow authenticated users to update profile views
+      allow delete: if false; // Views cannot be deleted
     }
 
     // ─── Public Mock Products ──────────────────────────────────────────────────
@@ -100,9 +103,22 @@ service cloud.firestore {
     // Allow authenticated users to read pharmacy data.
     // Only the pharmacy owner can update their pharmacy data.
     match /pharmacies/{pharmacyId} {
-      allow read: if request.auth != null;
+      allow read: if true; // Allow public read access for pharmacy profiles
       allow create: if request.auth != null;
       allow update: if request.auth != null && request.auth.uid == pharmacyId;
+    }
+
+    // ─── Pharmacy Verification (MTP) ───────────────────────────────────────────
+    // Rules for the pharmacyVerification collection (now primarily for initial MTP generation)
+    match /pharmacyVerification/{documentId} {
+      // Allow creation only if authenticated and userId matches
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Allow read only if authenticated and userId matches
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Allow update only for 'used' status by the owner
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId && request.resource.data.keys().hasOnly(['used']);
+      // No delete permission needed as MTPs are single-use or overwritten
+      allow delete: if false;
     }
 
     // ─── Deny All Else ─────────────────────────────────────────────────────────

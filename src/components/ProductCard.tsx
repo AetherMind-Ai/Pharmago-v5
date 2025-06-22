@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, ShoppingCart, Truck, Clock, AlertCircle, Shield } from 'lucide-react';
+import { Star, ShoppingCart, Truck, Clock, AlertCircle, Shield, Trash2 } from 'lucide-react'; // Added Trash2
 import { Product } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCart } from '../contexts/CartContext';
@@ -150,7 +150,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, isListView = false, 
                 onClick={handleDeleteClick}
                 className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-medium transition-all duration-300 bg-red-500 text-white hover:bg-red-600"
               >
-                <span>{t('deleteProduct' || 'Delete Product')}</span> {/* Added translation key or default */}
+                <Trash2 size={16} /> {/* Added Trash2 icon */}
+                <span>{t('Delete Product')}</span>
               </button>
             )}
           </div>

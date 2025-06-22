@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'; // Re-added storage imports
-import { db, storage } from '../firebaseConfig'; // Re-added storage import
+import { doc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+// Removed storage imports as we will store Base64 directly in Firestore
+import { db } from '../firebaseConfig'; // Removed storage import
 import { UserData, Product, Feedback, ProfileView, Reply } from '../types'; // Added Reply to imports
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import {
     FaMapMarkerAlt, FaPhone, FaGlobe, FaBox, FaBuilding, FaSpinner, FaArrowLeft,
     FaStar, FaClock, FaDollarSign, FaImage, FaInfoCircle, FaCheckCircle, FaChartLine,
-    FaEye, FaPaperPlane, FaSmile, FaThumbsUp, FaHeart, FaLaugh, FaAngry, FaSadTear, FaCamera
-} from 'react-icons/fa';
+    FaEye, FaPaperPlane, FaSmile, FaThumbsUp, FaHeart, FaLaugh, FaAngry, FaSadTear, FaCamera, FaTrash, FaRegTrashAlt, FaUpload
+} from 'react-icons/fa'; // Added FaUpload
 import { v4 as uuidv4 } from 'uuid';
+import ImageModal from '../components/ImageModal';
 
 export const PharmacyProfilePage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -29,15 +30,19 @@ export const PharmacyProfilePage: React.FC = () => {
     const [feedbackImages, setFeedbackImages] = useState<string[]>([]); // Changed type to string[]
     const feedbackFileInputRef = useRef<HTMLInputElement>(null);
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-    const [newCoverPhotoFile, setNewCoverPhotoFile] = useState<File | null>(null);
-    const coverPhotoInputRef = useRef<HTMLInputElement>(null);
-    const [isUploadingCoverPhoto, setIsUploadingCoverPhoto] = useState(false);
 
     const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
     const [isSubmittingReply, setIsSubmittingReply] = useState<{ [key: string]: boolean }>({});
     const [showReplyInput, setShowReplyInput] = useState<{ [key: string]: boolean }>({});
     const [showReactions, setShowReactions] = useState<{ [key: string]: boolean }>({});
     const [showReplyReactions, setShowReplyReactions] = useState<{ [key: string]: boolean }>({});
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const reactionTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout | null }>({});
+
+    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<{ type: 'feedback' | 'reply' | null; feedbackId: string | null; replyId?: string | null }>({ type: null, feedbackId: null, replyId: null });
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false); // New state for logo upload
+    const logoFileInputRef = useRef<HTMLInputElement>(null); // Ref for logo file input
 
     useEffect(() => {
         const fetchPharmacyDataAndLogView = async () => {
@@ -46,8 +51,6 @@ export const PharmacyProfilePage: React.FC = () => {
                 setLoading(false);
                 return;
             }
-
-            console.log("Attempting to fetch pharmacy data for ID:", id); // Added log
 
             try {
                 const userDocRef = doc(db, 'users', id);
@@ -114,14 +117,21 @@ export const PharmacyProfilePage: React.FC = () => {
                                 uniqueViewerIdentifiers.add(`session-${data.sessionId}`);
                             }
                         });
-                        setProfileViews(uniqueViewerIdentifiers.size);
+                        const calculatedProfileViews = uniqueViewerIdentifiers.size;
+                        setProfileViews(calculatedProfileViews);
+
+                        // Only update the profileViews in the user's document if the current user is the pharmacy owner
+                        if (user?.uid === id) {
+                            await updateDoc(userDocRef, {
+                                'pharmacyInfo.profileViews': calculatedProfileViews
+                            });
+                        }
 
                         const feedbacksRef = collection(db, 'feedbacks');
                         const feedbackQuery = query(feedbacksRef, where('pharmacyId', '==', id));
                         const feedbackSnapshot = await getDocs(feedbackQuery);
                         const fetchedFeedbacks: Feedback[] = await Promise.all(feedbackSnapshot.docs.map(async docSnap => {
                             const feedbackData = docSnap.data();
-                            console.log("Fetched feedback:", docSnap.id, "Pharmacy ID in feedback:", feedbackData.pharmacyId); // Added log
                             const repliesCollectionRef = collection(db, 'feedbacks', docSnap.id, 'replies');
                             const repliesSnapshot = await getDocs(repliesCollectionRef);
                             const replies = repliesSnapshot.docs.map(replyDoc => {
@@ -174,35 +184,36 @@ export const PharmacyProfilePage: React.FC = () => {
         setFeedbackImages([]);
     };
 
-    const handleCoverPhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files.length > 0) {
-            setNewCoverPhotoFile(event.target.files[0]);
-            handleUploadCoverPhoto(event.target.files[0]);
+    const handleLogoImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!id) { // Ensure id is defined
+            toast.error("Pharmacy ID is missing. Cannot upload logo.");
+            return;
         }
-    };
-
-    const handleUploadCoverPhoto = async (file: File) => {
-        if (!id || !file) return;
-
-        setIsUploadingCoverPhoto(true);
-        try {
-            const imageRef = ref(storage, `pharmacy_cover_photos/${id}/${uuidv4()}-${file.name}`);
-            await uploadBytes(imageRef, file);
-            const downloadURL = await getDownloadURL(imageRef);
-
-            const pharmacyDocRef = doc(db, 'users', id);
-            await updateDoc(pharmacyDocRef, {
-                'pharmacyInfo.coverPhoto': downloadURL,
-            });
-
-            setPharmacyData(prev => prev ? { ...prev, pharmacyInfo: { ...prev.pharmacyInfo!, coverPhoto: downloadURL } } : null);
-            toast.success("Cover photo updated successfully!");
-        } catch (err) {
-            console.error("Error uploading cover photo:", err);
-            toast.error("Failed to update cover photo.");
-        } finally {
-            setIsUploadingCoverPhoto(false);
-            setNewCoverPhotoFile(null);
+        if (event.target.files && event.target.files.length > 0) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64Image = reader.result as string;
+                if (pharmacyData && user?.uid === id && userData?.role === 'pharmacy') {
+                    setIsUploadingLogo(true);
+                    try {
+                        const userDocRef = doc(db, 'users', id);
+                        await updateDoc(userDocRef, {
+                            'pharmacyInfo.logoImage': base64Image
+                        });
+                        setPharmacyData(prev => prev ? { ...prev, pharmacyInfo: { ...prev.pharmacyInfo!, logoImage: base64Image } } : null);
+                        toast.success("Logo updated successfully!");
+                    } catch (err) {
+                        console.error("Error uploading logo:", err);
+                        toast.error("Failed to upload logo.");
+                    } finally {
+                        setIsUploadingLogo(false);
+                    }
+                } else {
+                    toast.error("You do not have permission to update this logo.");
+                }
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -217,8 +228,7 @@ export const PharmacyProfilePage: React.FC = () => {
         try {
             const imageUrls: string[] = [];
             if (feedbackImages.length > 0) {
-                // feedbackImages now contains Base64 strings directly
-                imageUrls.push(feedbackImages[0]); // Just push the Base64 string
+                imageUrls.push(feedbackImages[0]);
             }
 
             const newFeedback: Omit<Feedback, 'id'> = {
@@ -236,7 +246,7 @@ export const PharmacyProfilePage: React.FC = () => {
             const docRef = await addDoc(collection(db, 'feedbacks'), newFeedback);
             toast.success("Feedback submitted successfully!");
 
-            setFeedbacks(prev => [{ ...newFeedback, id: docRef.id, timestamp: new Date() }, ...prev]);
+            setFeedbacks(prev => [{ ...newFeedback, id: docRef.id, timestamp: new Date(), replies: [] }, ...prev]);
 
             setFeedbackText('');
             setFeedbackRating(0);
@@ -257,7 +267,7 @@ export const PharmacyProfilePage: React.FC = () => {
 
         try {
             let docRef;
-            let currentReactions: { [key: string]: string[] } = {}; // Map emoji to array of user UIDs
+            let currentReactions: { [key: string]: string[] } = {};
 
             if (type === 'feedback') {
                 docRef = doc(db, 'feedbacks', targetId);
@@ -265,7 +275,7 @@ export const PharmacyProfilePage: React.FC = () => {
                 if (docSnap.exists()) {
                     currentReactions = docSnap.data().reactions || {};
                 }
-            } else { // type === 'reply'
+            } else {
                 if (!replyId) return;
                 docRef = doc(db, 'feedbacks', targetId, 'replies', replyId);
                 const docSnap = await getDoc(docRef);
@@ -274,7 +284,6 @@ export const PharmacyProfilePage: React.FC = () => {
                 }
             }
 
-            // Remove user's previous reaction if any
             let updatedReactions = { ...currentReactions };
             for (const key in updatedReactions) {
                 updatedReactions[key] = updatedReactions[key].filter(uid => uid !== user.uid);
@@ -283,21 +292,17 @@ export const PharmacyProfilePage: React.FC = () => {
                 }
             }
 
-            // Add new reaction if not already reacted with this emoji
-            // For replies, only allow '👍'
             if (type === 'reply' && emoji !== '👍') {
                 toast.error("You can only react with Thumbs Up on replies.");
                 return;
             }
 
-            // If the user clicked the same emoji again, it means they want to remove it
             if (!currentReactions[emoji]?.includes(user.uid)) {
                 updatedReactions[emoji] = [...(updatedReactions[emoji] || []), user.uid];
             }
 
             await updateDoc(docRef, { reactions: updatedReactions });
 
-            // Update local state
             setFeedbacks(prevFeedbacks => prevFeedbacks.map(fb => {
                 if (fb.id === targetId) {
                     if (type === 'feedback') {
@@ -339,7 +344,7 @@ export const PharmacyProfilePage: React.FC = () => {
                 userPhotoUrl: user.photoURL || userData?.photoDataUrl || undefined,
                 text: replyText[feedbackId].trim(),
                 timestamp: serverTimestamp() as any,
-                reactions: {}, // Only thumbs up reaction for replies
+                reactions: {},
             };
 
             const repliesCollectionRef = collection(db, 'feedbacks', feedbackId, 'replies');
@@ -366,6 +371,66 @@ export const PharmacyProfilePage: React.FC = () => {
         }
     };
 
+    const handleDeleteFeedback = async (feedbackId: string) => {
+        if (!user) {
+            toast.error("Please log in to delete feedback.");
+            return;
+        }
+
+        try {
+            await deleteDoc(doc(db, 'feedbacks', feedbackId));
+            setFeedbacks(prev => prev.filter(fb => fb.id !== feedbackId));
+            toast.success("Feedback deleted successfully!");
+        } catch (err) {
+            console.error("Error deleting feedback:", err);
+            toast.error("Failed to delete feedback.");
+        } finally {
+            setShowDeleteConfirmation(false);
+            setItemToDelete({ type: null, feedbackId: null, replyId: null });
+        }
+    };
+
+    const handleDeleteReply = async (feedbackId: string, replyId: string) => {
+        if (!user) {
+            toast.error("Please log in to delete reply.");
+            return;
+        }
+
+        try {
+            await deleteDoc(doc(db, 'feedbacks', feedbackId, 'replies', replyId));
+            setFeedbacks(prev => prev.map(fb =>
+                fb.id === feedbackId
+                    ? { ...fb, replies: fb.replies?.filter(rep => rep.id !== replyId) || [] }
+                    : fb
+            ));
+            toast.success("Reply deleted successfully!");
+        } catch (err) {
+            console.error("Error deleting reply:", err);
+            toast.error("Failed to delete reply.");
+        } finally {
+            setShowDeleteConfirmation(false);
+            setItemToDelete({ type: null, feedbackId: null, replyId: null });
+        }
+    };
+
+    const openDeleteConfirmation = (type: 'feedback' | 'reply', feedbackId: string, replyId?: string) => {
+        setItemToDelete({ type, feedbackId, replyId });
+        setShowDeleteConfirmation(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (itemToDelete.type === 'feedback' && itemToDelete.feedbackId) {
+            handleDeleteFeedback(itemToDelete.feedbackId);
+        } else if (itemToDelete.type === 'reply' && itemToDelete.feedbackId && itemToDelete.replyId) {
+            handleDeleteReply(itemToDelete.feedbackId, itemToDelete.replyId);
+        }
+    };
+
+    const handleCancelDelete = () => {
+        setShowDeleteConfirmation(false);
+        setItemToDelete({ type: null, feedbackId: null, replyId: null });
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -378,12 +443,12 @@ export const PharmacyProfilePage: React.FC = () => {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 text-red-600">
                 <p className="text-lg">{error}</p>
-                <button
-                    onClick={() => navigate(-1)}
-                    className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center"
-                >
-                    <FaArrowLeft className="mr-2" /> Go Back
-                </button>
+                            <button
+                                onClick={() => navigate(`/products?pharmacy=${encodeURIComponent(pharmacyInfo.name)}`)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center"
+                            >
+                                <FaBox className="mr-2" /> Products
+                            </button>
             </div>
         );
     }
@@ -415,42 +480,44 @@ export const PharmacyProfilePage: React.FC = () => {
                             alt="Cover"
                             className="w-full h-full object-cover"
                         />
-                        {user?.uid === id && (
-                            <div className="absolute bottom-4 right-4">
-                                <input
-                                    type="file"
-                                    ref={coverPhotoInputRef}
-                                    onChange={handleCoverPhotoSelect}
-                                    accept="image/*"
-                                    className="hidden"
-                                />
-                                <button
-                                    onClick={() => coverPhotoInputRef.current?.click()}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center"
-                                    disabled={isUploadingCoverPhoto}
-                                >
-                                    {isUploadingCoverPhoto ? <FaSpinner className="animate-spin mr-2" /> : <FaCamera className="mr-2" />}
-                                    Edit Cover Photo
-                                </button>
-                            </div>
-                        )}
                     </div>
                     <div className="relative flex flex-col md:flex-row items-center md:items-end -mt-24 md:-mt-16 px-4">
-                        <img
-                            src={pharmacyInfo.logoImage || 'https://via.placeholder.com/180?text=Logo'}
-                            alt={`${pharmacyInfo.name} Logo`}
-                            className="w-40 h-40 rounded-full object-cover border-4 border-white shadow-lg"
-                        />
+                        <div className="relative w-40 h-40 rounded-full border-4 border-white shadow-lg group">
+                            <img
+                                src={pharmacyInfo.logoImage || 'https://via.placeholder.com/180'}
+                                alt={`${pharmacyInfo.name} Logo`}
+                                className="w-full h-full object-cover rounded-full"
+                            />
+                            {user?.uid === id && userData?.role === 'pharmacy' && (
+                                <div
+                                    className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
+                                    onClick={() => logoFileInputRef.current?.click()}
+                                >
+                                    {isUploadingLogo ? (
+                                        <FaSpinner className="animate-spin text-white text-2xl" />
+                                    ) : (
+                                        <FaUpload className="text-white text-2xl" />
+                                    )}
+                                    <input
+                                        type="file"
+                                        ref={logoFileInputRef}
+                                        onChange={handleLogoImageChange}
+                                        accept="image/*"
+                                        className="hidden"
+                                    />
+                                </div>
+                            )}
+                        </div>
                         <div className="md:ml-6 mt-4 md:mt-0 text-center md:text-left">
                             <h1 className="text-3xl md:text-4xl font-bold text-gray-800">{pharmacyInfo.name}</h1>
                             <p className="text-gray-600">{`Your Trusted Partner in Health`}</p>
                         </div>
                         <div className="flex-grow flex justify-center md:justify-end mt-4 md:mt-0 space-x-2">
                             <button
-                                onClick={() => navigate(-1)}
-                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition flex items-center"
+                                onClick={() => navigate(`/products?pharmacy=${encodeURIComponent(pharmacyInfo.name)}`)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center"
                             >
-                                <FaArrowLeft className="mr-2" /> Back
+                                <FaBox className="mr-2" /> Products
                             </button>
                             {pharmacyInfo.vodafoneCash && (
                                 <a
@@ -466,10 +533,10 @@ export const PharmacyProfilePage: React.FC = () => {
                     </div>
                     <div className="mt-4 border-t border-gray-200">
                         <div className="flex justify-start space-x-8 px-4 py-2">
-                            <span className="font-semibold text-gray-600 hover:text-blue-600 cursor-pointer">Posts</span>
-                            <span className="font-semibold text-gray-600 hover:text-blue-600 cursor-pointer">About</span>
-                            <span className="font-semibold text-gray-600 hover:text-blue-600 cursor-pointer">Photos</span>
-                            <span className="font-semibold text-gray-600 hover:text-blue-600 cursor-pointer">Reviews</span>
+                            <span className="font-semibold text-gray-600 hover:text-blue-600 cursor-pointer"></span>
+                            <span className="font-semibold text-gray-600 hover:text-blue-600 cursor-pointer"></span>
+                            <span className="font-semibold text-gray-600 hover:text-blue-600 cursor-pointer"></span>
+                            <span className="font-semibold text-gray-600 hover:text-blue-600 cursor-pointer"></span>
                         </div>
                     </div>
                 </div>
@@ -501,7 +568,7 @@ export const PharmacyProfilePage: React.FC = () => {
                     <div className="bg-white p-6 rounded-lg shadow-md">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-gray-800">Photos</h2>
-                            <a href="#" className="text-blue-600 hover:underline">See all photos</a>
+                            <button onClick={() => setIsImageModalOpen(true)} className="text-blue-600 hover:underline">See all photos</button>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             {pharmacyInfo.pharmacyImages && pharmacyInfo.pharmacyImages.slice(0, 4).map((img, index) => (
@@ -548,7 +615,7 @@ export const PharmacyProfilePage: React.FC = () => {
                             <div className="flex items-center p-3 bg-gray-50 rounded-md">
                                 <FaClock className="mr-3 text-green-500 text-xl" />
                                 <div>
-                                    <span className="font-semibold">Avg. Delivery:</span> 60 mins
+                                    <span className="font-semibold">Avg. Delivery:</span> 45 mins
                                 </div>
                             </div>
                         </div>
@@ -625,7 +692,7 @@ export const PharmacyProfilePage: React.FC = () => {
                     {/* Display Feedbacks/Posts */}
                     <div className="bg-white rounded-lg shadow-md">
                          <h2 className="text-xl font-bold text-gray-800 p-6 border-b border-gray-200">Reviews</h2>
-                        <div className="divide-y divide-gray-200">
+                        <div className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto"> {/* Added max-h and overflow-y-auto */}
                             {feedbacks.length > 0 ? (
                                 feedbacks.map((feedback) => (
                                     <div key={feedback.id} className="p-6">
@@ -635,7 +702,7 @@ export const PharmacyProfilePage: React.FC = () => {
                                                 alt={feedback.userName}
                                                 className="w-10 h-10 rounded-full object-cover mr-4"
                                             />
-                                            <div className="flex-1">
+                                            <div className="flex-1 relative"> {/* Added relative positioning */}
                                                 <div className="flex items-center justify-between">
                                                     <div>
                                                         <p className="font-semibold text-gray-800">{feedback.userName}</p>
@@ -647,7 +714,18 @@ export const PharmacyProfilePage: React.FC = () => {
                                                         ))}
                                                     </div>
                                                 </div>
-                                                <p className="text-gray-700 mt-2 whitespace-pre-wrap">{feedback.text}</p>
+                                                <div className="flex justify-between items-start">
+                                                    <p className="text-gray-700 mt-2 whitespace-pre-wrap flex-1">{feedback.text}</p>
+                                                    {user?.uid === feedback.userId && (
+                                                        <button
+                                                            onClick={() => openDeleteConfirmation('feedback', feedback.id)}
+                                                            className="ml-4 text-red-500 hover:text-red-700 text-lg p-1 rounded-full bg-transparent"
+                                                            title="Delete Review"
+                                                        >
+                                                            <FaRegTrashAlt />
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 {feedback.images && feedback.images.length > 0 && (
                                                     <div className="mt-3 flex flex-wrap gap-2">
                                                         {feedback.images.map((img, imgIndex) => (
@@ -655,13 +733,22 @@ export const PharmacyProfilePage: React.FC = () => {
                                                         ))}
                                                     </div>
                                                 )}
-                                                <div
-                                                    className="relative mt-4 flex items-center space-x-4 text-gray-600"
-                                                    onMouseEnter={() => setShowReactions(prev => ({ ...prev, [feedback.id]: true }))}
-                                                    onMouseLeave={() => setShowReactions(prev => ({ ...prev, [feedback.id]: false }))}
-                                                >
+                                                <div className="relative mt-4 flex items-center space-x-4 text-gray-600">
                                                     {/* Reaction and Reply buttons */}
-                                                    <div className="flex items-center space-x-1 text-gray-600">
+                                                    <div
+                                                        className="flex items-center space-x-1 text-gray-600 cursor-pointer"
+                                                        onMouseEnter={() => {
+                                                            if (reactionTimeoutRef.current[feedback.id]) {
+                                                                clearTimeout(reactionTimeoutRef.current[feedback.id]!);
+                                                            }
+                                                            setShowReactions(prev => ({ ...prev, [feedback.id]: true }));
+                                                        }}
+                                                        onMouseLeave={() => {
+                                                            reactionTimeoutRef.current[feedback.id] = setTimeout(() => {
+                                                                setShowReactions(prev => ({ ...prev, [feedback.id]: false }));
+                                                            }, 500); // 0.5 second delay
+                                                        }}
+                                                    >
                                                         <FaSmile />
                                                         <span>React</span>
                                                     </div>
@@ -675,7 +762,19 @@ export const PharmacyProfilePage: React.FC = () => {
 
                                                     {/* Reaction Picker (Facebook-like) */}
                                                     {showReactions[feedback.id] && (
-                                                        <div className="absolute bottom-full left-0 mb-2 p-2 bg-white border border-gray-200 rounded-full shadow-lg flex space-x-2 animate-fade-in-up z-10">
+                                                        <div
+                                                            className="absolute bottom-full left-0 mb-2 p-2 bg-white border border-gray-200 rounded-full shadow-lg flex space-x-2 animate-fade-in-up z-10"
+                                                            onMouseEnter={() => {
+                                                                if (reactionTimeoutRef.current[feedback.id]) {
+                                                                    clearTimeout(reactionTimeoutRef.current[feedback.id]!);
+                                                                }
+                                                            }}
+                                                            onMouseLeave={() => {
+                                                                reactionTimeoutRef.current[feedback.id] = setTimeout(() => {
+                                                                    setShowReactions(prev => ({ ...prev, [feedback.id]: false }));
+                                                                }, 500); // 0.5 second delay
+                                                            }}
+                                                        >
                                                             {['👍', '❤️', '😂', '😢', '😡'].map(emoji => (
                                                                 <button
                                                                     key={emoji}
@@ -736,23 +835,34 @@ export const PharmacyProfilePage: React.FC = () => {
                                                                         <span className="text-xs text-gray-500">{(reply.timestamp as Date).toLocaleDateString()}</span>
                                                                     </div>
                                                                     <p className="text-gray-700 text-sm mt-1 whitespace-pre-wrap">{reply.text}</p>
-                                                                    <div className="mt-2 flex items-center space-x-2 text-gray-600">
-                                                                        {/* Reply Reaction (Thumbs Up Only) */}
-                                                                        <button
-                                                                            className="flex items-center space-x-1 hover:text-blue-600 transition"
-                                                                            onClick={() => handleReaction(feedback.id, '👍', 'reply', reply.id)}
-                                                                        >
-                                                                            <FaThumbsUp />
-                                                                            <span>Like</span>
-                                                                        </button>
-                                                                        {Object.keys(reply.reactions || {}).length > 0 && (
-                                                                            <div className="flex items-center space-x-1">
-                                                                                {Object.entries(reply.reactions || {}).map(([emoji, uids]) => uids.length > 0 && (
-                                                                                    <span key={emoji} className="flex items-center bg-gray-100 px-2 py-1 rounded-full text-xs">
-                                                                                        {emoji} {uids.length}
-                                                                                    </span>
-                                                                                ))}
-                                                                            </div>
+                                                                    <div className="mt-2 flex items-center justify-between text-gray-600">
+                                                                        <div className="flex items-center space-x-2">
+                                                                            {/* Reply Reaction (Thumbs Up Only) */}
+                                                                            <button
+                                                                                className="flex items-center space-x-1 hover:text-blue-600 transition"
+                                                                                onClick={() => handleReaction(feedback.id, '👍', 'reply', reply.id)}
+                                                                            >
+                                                                                <FaThumbsUp />
+                                                                                <span>Like</span>
+                                                                            </button>
+                                                                            {Object.keys(reply.reactions || {}).length > 0 && (
+                                                                                <div className="flex items-center space-x-1">
+                                                                                    {Object.entries(reply.reactions || {}).map(([emoji, uids]) => uids.length > 0 && (
+                                                                                        <span key={emoji} className="flex items-center bg-gray-100 px-2 py-1 rounded-full text-xs">
+                                                                                            {emoji} {uids.length}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        {user?.uid === reply.userId && (
+                                                                            <button
+                                                                                onClick={() => openDeleteConfirmation('reply', feedback.id, reply.id)}
+                                                                                className="text-red-500 hover:text-red-700 text-lg p-1 rounded-full bg-transparent"
+                                                                                title="Delete Reply"
+                                                                            >
+                                                                                <FaRegTrashAlt />
+                                                                            </button>
                                                                         )}
                                                                     </div>
                                                                 </div>
@@ -771,6 +881,43 @@ export const PharmacyProfilePage: React.FC = () => {
                     </div>
                 </div>
             </div>
+            <ImageModal
+                images={
+                    [
+                        pharmacyInfo.logoImage,
+                        pharmacyInfo.coverPhoto,
+                        ...(pharmacyInfo.pharmacyImages || []),
+                        ...feedbacks.flatMap(fb => fb.images || [])
+                    ].filter((img): img is string => !!img)
+                }
+                isOpen={isImageModalOpen}
+                onClose={() => setIsImageModalOpen(false)}
+            />
+
+            {showDeleteConfirmation && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h3>
+                        <p className="text-gray-700 mb-6">
+                            Are you sure you want to delete this {itemToDelete.type === 'feedback' ? 'review' : 'reply'}? This action cannot be undone.
+                        </p>
+                        <div className="flex justify-center space-x-4">
+                            <button
+                                onClick={handleCancelDelete}
+                                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmDelete}
+                                className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+                            >
+                                Continue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

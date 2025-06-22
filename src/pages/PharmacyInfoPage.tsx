@@ -8,6 +8,11 @@ import 'leaflet/dist/leaflet.css'; // Import Leaflet CSS
 import L from 'leaflet'; // Import Leaflet library
 import { MapPin, Phone, Camera, Image } from 'lucide-react'; // Import icons
 
+// Helper function to generate a random 6-digit OTP
+function generateOtp(length = 6): string {
+  return Array.from({ length }, () => Math.floor(Math.random() * 10)).join('');
+}
+
 // Fix for default icon issue with Webpack/Parcel
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -182,6 +187,9 @@ const PharmacyInfoPage: React.FC = () => {
     setIsLoading(true);
     try {
       const userDocRef = doc(db, 'users', user.uid);
+      // Generate a new MTP for the pharmacy
+      const newMtp = generateOtp(); // Assuming generateOtp is available or imported
+
       await updateDoc(userDocRef, {
         pharmacyInfo: {
           name: pharmacyName,
@@ -190,14 +198,15 @@ const PharmacyInfoPage: React.FC = () => {
           mapLink: mapLink,
           logoImage: logoImage,
           pharmacyImages: pharmacyImages,
+          mtp: newMtp, // Save the new MTP here
         },
-        // You might want to add a flag here to indicate pharmacy info is complete
         isPharmacyInfoComplete: true,
+        isPharmacyVerified: true, // Mark as verified after initial info setup
       });
 
       toast.success('Pharmacy information saved successfully!');
-      // Navigate to the next page or dashboard
-      navigate('/account'); // Navigate to account page after saving
+      // For the first sign-in, redirect to account page directly
+      navigate('/account'); 
 
     } catch (err) {
       console.error('Failed to save pharmacy information:', err);
@@ -244,7 +253,7 @@ const PharmacyInfoPage: React.FC = () => {
                   onChange={handleVodafoneCashChange}
                   className={`flex-1 py-3 px-4 outline-none text-gray-800 text-xl bg-transparent ${vodafoneCashError ? 'border-red-500' : ''}`}
                   disabled={isLoading}
-                  placeholder="Enter Vodafone Cash number"
+                  placeholder="Enter The Pharmacy Number"
                   inputMode="numeric" // Suggest numeric keyboard on mobile
                 />
               </div>

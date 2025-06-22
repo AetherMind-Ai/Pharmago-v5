@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, ShoppingCart, User, Globe, Heart, Menu, X, Plus, Minus, Trash2, FileText,
-  Home, Pill, Sparkles, Dna, Baby, PawPrint // Import new icons
+  Home, Pill, Sparkles, Dna, Baby, PawPrint, Syringe // Import new icons, added Syringe for Med-Devices
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -64,6 +64,8 @@ const Header: React.FC = () => {
     { key: 'skincare', icon: <Sparkles size={20} />, label: 'Skincare', category: 'Skincare' },
     { key: 'vitamins', icon: <Dna size={20} />, label: 'Vitamins', category: 'Vitamins' },
     { key: 'babycare', icon: <Baby size={20} />, label: 'Baby Care', category: 'Baby Care' },
+    { key: 'petcare', icon: <PawPrint size={20} />, label: 'Pet Care', category: 'Pet Care' }, // Added Pet Care
+    { key: 'meddevices', icon: <Syringe size={20} />, label: 'Med-Devices', category: 'Med-Devices' }, // Added Med-Devices
   ];
 
   const toggleLanguage = () => {

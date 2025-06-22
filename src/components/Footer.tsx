@@ -16,7 +16,7 @@ const Footer: React.FC = () => {
                 <Heart size={28} className="text-white" />
               </div>
               <div>
-                <h3 className="text-3xl font-extrabold text-white">MedGo</h3>
+                <h3 className="text-3xl font-extrabold text-white">PharmaGo</h3>
                 <p className="text-sm text-gray-400 mt-1">Healthcare Delivered, Simplified.</p>
               </div>
             </div>
@@ -72,15 +72,11 @@ const Footer: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <Phone size={18} className="text-blue-400" />
-                <span className="text-gray-400">+1 (555) 123-4567</span>
+                <span className="text-gray-400">+20 122 791 9119</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail size={18} className="text-blue-400" />
-                <span className="text-gray-400">support@medgo.com</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <MapPin size={18} className="text-blue-400" />
-                <span className="text-gray-400">123 Healthcare St, Medical City, CA 90210</span>
+                <span className="text-gray-400">pharmago.help@gmail.com</span>
               </div>
             </div>
 
@@ -102,12 +98,12 @@ const Footer: React.FC = () => {
         <div className="border-t border-gray-700 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-500 text-sm mb-4 md:mb-0">
-              © {new Date().getFullYear()} MedGo. All rights reserved.
+              © {new Date().getFullYear()} PharmaGo. All rights reserved.
             </div> 
             <div className="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
               <a href="/privacy-policy" className="text-gray-500 hover:text-white transition-colors duration-300">Privacy Policy</a>
               <a href="/terms-of-service" className="text-gray-500 hover:text-white transition-colors duration-300">Terms of Service</a>
-              <a href="#" className="text-gray-500 hover:text-white transition-colors duration-300">Help Center</a>
+              <a href="/center" className="text-gray-500 hover:text-white transition-colors duration-300">Help Center</a>
             </div>
           </div>
         </div>

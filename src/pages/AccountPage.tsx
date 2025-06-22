@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   FaCamera, FaSpinner,
   FaUser, FaEnvelope, FaAt, FaPhone, FaMapMarkerAlt, FaMailBulk, FaGlobeAmericas, FaCity,
-  FaShoppingCart, FaTachometerAlt, FaSignOutAlt, FaSave, FaEdit
+  FaShoppingCart, FaChartBar, FaSignOutAlt, FaSave, FaEdit
 } from 'react-icons/fa';
 
 // --- Helper Components for a Cleaner Structure ---
@@ -267,7 +267,7 @@ export const AccountPage: React.FC = () => {
                 <div className="mt-6 flex justify-end gap-3">
                     {userData?.role === 'pharmacy' && (
                         <button onClick={handleDashboardClick} className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition flex items-center justify-center">
-                            <FaTachometerAlt className="mr-2" /> Dashboard
+                            <FaChartBar className="mr-2" /> Dashboard
                         </button>
                     )}
                     <button onClick={handleSignOut} className="px-5 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition flex items-center justify-center">

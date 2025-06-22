@@ -1,10 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // Added useState, useEffect
 import { Pill, Baby, Heart, Dog, Stethoscope, Flower2, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Category } from '../types';
+import { Category, Product } from '../types'; // Added Product type
+import { db } from '../firebaseConfig'; // Import db
+import { collection, getDocs } from 'firebase/firestore'; // Import Firestore functions
 
 const CategoryGrid: React.FC = () => {
   const { t } = useLanguage();
+  const [categoryProductCounts, setCategoryProductCounts] = useState<{ [key: string]: number }>({});
+  const [loadingCounts, setLoadingCounts] = useState(true);
+
+  useEffect(() => {
+    const fetchProductCounts = async () => {
+      try {
+        const productsCollectionRef = collection(db, 'products');
+        const querySnapshot = await getDocs(productsCollectionRef);
+        const counts: { [key: string]: number } = {};
+
+        querySnapshot.docs.forEach(doc => {
+          const product = doc.data() as Product;
+          const categoryId = product.category.toLowerCase().replace(/\s/g, '-'); // Normalize category name to ID
+          counts[categoryId] = (counts[categoryId] || 0) + 1;
+        });
+        setCategoryProductCounts(counts);
+      } catch (error) {
+        console.error('Error fetching product counts:', error);
+      } finally {
+        setLoadingCounts(false);
+      }
+    };
+
+    fetchProductCounts();
+  }, []);
 
   const categories: Category[] = [
     {
@@ -12,42 +39,42 @@ const CategoryGrid: React.FC = () => {
       name: t('medications'),
       icon: 'Pill',
       image: 'https://images.pexels.com/photos/3683074/pexels-photo-3683074.jpeg',
-      productCount: 1250
+      productCount: categoryProductCounts['medications'] || 0 // Dynamic count
     },
     {
       id: 'skincare',
       name: t('skincare'),
       icon: 'Flower2',
       image: 'https://images.pexels.com/photos/3373736/pexels-photo-3373736.jpeg',
-      productCount: 890
+      productCount: categoryProductCounts['skincare'] || 0 // Dynamic count
     },
     {
       id: 'vitamins',
       name: t('vitamins'),
       icon: 'Heart',
       image: 'https://images.pexels.com/photos/3683074/pexels-photo-3683074.jpeg',
-      productCount: 650
+      productCount: categoryProductCounts['vitamins'] || 0 // Dynamic count
     },
     {
       id: 'babycare',
       name: t('babycare'),
       icon: 'Baby',
-      image: 'https://alldaymedicalcare.com/wp-content/uploads/2025/08/2424258.webp',
-      productCount: 420
+      image: 'https://lh4.googleusercontent.com/proxy/CzHE9s8bEAOzRFHeJbbQykYq5SGB-38zENPh88O-s7-mDzEdy99z2aJFCoDZr0v23N22ftJsrQ2WGAWWRUorsxzhJX1dZNFoLs8KQXgLGj5VS9qR9_3FvR-BQcW4VboR-yF0MDvN1g',
+      productCount: categoryProductCounts['baby-care'] || 0 // Dynamic count (assuming 'Baby Care' maps to 'baby-care' ID)
     },
     {
       id: 'petcare',
       name: t('petcare'),
       icon: 'Dog',
-      image: 'https://www.pawsplaycle.com/wp-content/uploads/2025/02/pet-care.jpg',
-      productCount: 180
+      image: 'https://animalfoundation.com/application/files/3115/4939/3831/Basics-Proper-Pet-Care.jpg',
+      productCount: categoryProductCounts['pet-care'] || 0 // Dynamic count (assuming 'Pet Care' maps to 'pet-care' ID)
     },
     {
       id: 'medical-devices',
       name: 'Med-Devices',
       icon: 'Stethoscope',
       image: 'https://www.massdevice.com/wp-content/uploads/2021/05/goddard-sponsored-hero-image-june2021.jpg',
-      productCount: 320
+      productCount: categoryProductCounts['med-devices'] || 0 // Dynamic count (assuming 'Med-Devices' maps to 'medical-devices' ID)
     }
   ];
 
@@ -114,7 +141,11 @@ const CategoryGrid: React.FC = () => {
                     {category.name}
                   </h3>
                   <p className="text-gray-500 text-sm flex items-center justify-center space-x-2">
-                    <span>{category.productCount.toLocaleString()} products</span>
+                    {loadingCounts ? (
+                      <span>Loading products...</span>
+                    ) : (
+                      <span>{category.productCount.toLocaleString()} products</span>
+                    )}
                   </p>
                 </div>
               </div>
